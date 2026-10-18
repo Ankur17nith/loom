@@ -7,7 +7,7 @@ import { Command, CommanderError } from "commander";
 import { createRequire } from "node:module";
 import { analyzeRepository } from "./analysis.js";
 import { ConfigError, initConfig, loadConfig } from "./config.js";
-import { gitAvailable, repositoryRoot } from "./git.js";
+import { GitError, gitAvailable, repositoryRoot } from "./git.js";
 import { reverseImportReachability } from "./graph.js";
 import { graphText, explainText, jsonReport, reportDocument, textReport } from "./report.js";
 import type { Finding, LoomConfig, ReportDocument } from "./types.js";
@@ -21,6 +21,8 @@ export interface CliIo {
   stderr?: (text: string) => void;
 }
 
+let activeIo: CliIo = {};
+
 class CliFailure extends Error {
   public constructor(public readonly exitCode: number, message: string) {
     super(message);
@@ -28,11 +30,11 @@ class CliFailure extends Error {
 }
 
 function output(io: CliIo, text: string): void {
-  (io.stdout ?? ((value: string) => process.stdout.write(value)))(text);
+  (io.stdout ?? activeIo.stdout ?? ((value: string) => process.stdout.write(value)))(text);
 }
 
 function errorOutput(io: CliIo, text: string): void {
-  (io.stderr ?? ((value: string) => process.stderr.write(value)))(text);
+  (io.stderr ?? activeIo.stderr ?? ((value: string) => process.stderr.write(value)))(text);
 }
 
 function addRepositoryOptions(command: Command): Command {
@@ -80,7 +82,13 @@ function render(document: ReportDocument, format: "text" | "json"): string {
 function analyzeForCommand(command: Command) {
   const options = commandOptions(command);
   const repository = loadRepositoryConfig(options);
-  const analysis = analyzeRepository({ root: repository.root, config: repository.config, ...(options.base ? { base: options.base } : {}) });
+  let analysis;
+  try {
+    analysis = analyzeRepository({ root: repository.root, config: repository.config, ...(options.base ? { base: options.base } : {}) });
+  } catch (error) {
+    if (error instanceof GitError || error instanceof ConfigError) throw new CliFailure(2, error.message);
+    throw new CliFailure(3, error instanceof Error ? error.message : String(error));
+  }
   return { options, ...repository, analysis };
 }
 
@@ -204,6 +212,7 @@ function createProgram(io: CliIo): Command {
 }
 
 export async function runCli(argv: string[], io: CliIo = {}): Promise<number> {
+  activeIo = io;
   const program = createProgram(io);
   try {
     await program.parseAsync(["node", "loom", ...argv]);
@@ -216,6 +225,8 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number> {
     if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : 2;
     errorOutput(io, `loom: ${error instanceof Error ? error.message : String(error)}\n`);
     return 3;
+  } finally {
+    activeIo = {};
   }
 }
 

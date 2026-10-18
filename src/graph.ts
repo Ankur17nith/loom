@@ -28,19 +28,20 @@ function contractLookup(modules: ParsedModule[]): Map<string, Contract> {
   return result;
 }
 
-function importedContract(module: ParsedModule, imported: ImportRecord, resolved: string | undefined, contracts: Map<string, Contract>): { path: string; name: string } | undefined {
+function importedContract(module: ParsedModule, imported: ImportRecord, resolved: string | undefined, contracts: Map<string, Contract>, aliases: Map<string, { path: string; name: string }>): { path: string; name: string } | undefined {
   if (!resolved || imported.imported === "*" || imported.imported === "default") return undefined;
   const key = `${resolved}#${imported.imported}`;
-  return contracts.has(key) ? { path: resolved, name: imported.imported } : undefined;
+  if (contracts.has(key)) return { path: resolved, name: imported.imported };
+  return aliases.get(key);
 }
 
-function refsForProperty(module: ParsedModule, access: PropertyAccess, paths: Set<string>, contracts: Map<string, Contract>): { path: string; name: string; resolved: boolean }[] {
+function refsForProperty(module: ParsedModule, access: PropertyAccess, paths: Set<string>, contracts: Map<string, Contract>, aliases: Map<string, { path: string; name: string }>): { path: string; name: string; resolved: boolean }[] {
   const refs: { path: string; name: string; resolved: boolean }[] = [];
   for (const name of access.contractNames) {
     const imported = module.imports.find((candidate) => candidate.local === name);
     if (imported) {
       const resolved = resolveImport(module.path, imported.source, paths);
-      const ref = importedContract(module, imported, resolved, contracts);
+      const ref = importedContract(module, imported, resolved, contracts, aliases);
       if (ref) refs.push({ ...ref, resolved: true });
     } else if (contracts.has(`${module.path}#${name}`)) {
       refs.push({ path: module.path, name, resolved: true });
@@ -57,6 +58,13 @@ export function buildGraph(inputs: SourceInput[]): GraphSnapshot {
   const modules = inputs.map(parseSource).sort((a, b) => compareStrings(a.path, b.path));
   const paths = new Set(modules.map((module) => module.path));
   const contracts = contractLookup(modules);
+  const aliases = new Map<string, { path: string; name: string }>();
+  for (const module of modules) for (const imported of module.imports.filter((candidate) => candidate.kind === "re-export")) {
+    const resolved = resolveImport(module.path, imported.source, paths);
+    if (!resolved) continue;
+    const target = contracts.has(`${resolved}#${imported.imported}`) ? { path: resolved, name: imported.imported } : undefined;
+    if (target) aliases.set(`${module.path}#${imported.local}`, target);
+  }
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
   const usages: UsageEvidence[] = [];
@@ -76,11 +84,11 @@ export function buildGraph(inputs: SourceInput[]): GraphSnapshot {
       const resolved = resolveImport(module.path, imported.source, paths);
       if (!resolved) continue;
       addEdge(edges, moduleId(module.path), moduleId(resolved), "imports", imported, imported.local);
-      const ref = importedContract(module, imported, resolved, contracts);
+      const ref = importedContract(module, imported, resolved, contracts, aliases);
       if (ref) addEdge(edges, moduleId(module.path), contractId(ref.path, ref.name), "uses-type", imported, imported.local);
     }
     for (const access of module.propertyAccesses) {
-      for (const ref of refsForProperty(module, access, paths, contracts)) {
+      for (const ref of refsForProperty(module, access, paths, contracts, aliases)) {
         usages.push({ module: module.path, contractPath: ref.path, contract: ref.name, field: access.property, relation: "typed-property", text: access.text, resolved: ref.resolved, line: access.line, column: access.column });
         addEdge(edges, moduleId(module.path), contractId(ref.path, ref.name), "reads-property", access, access.property, access.text);
       }
