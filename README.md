@@ -30,6 +30,12 @@ accessible relationship-list alternative to the graph. The dashboard does not
 execute repository commands, persist report history, authenticate users, or
 apply patches.
 
+The visual system is documented in
+[`design-system/loom/MASTER.md`](design-system/loom/MASTER.md). It uses a
+neutral evidence-workbench palette, IBM Plex Sans/JetBrains Mono type roles,
+4px spacing rhythm, restrained borders, and blue/red/amber/green semantics for
+interaction, breaking risk, uncertainty, and explicit verification.
+
 ## Core engine status
 
 The core engine and CLI are usable as a vertical slice. It currently supports:
@@ -64,9 +70,26 @@ npm run build
 node dist/cli.js --help
 ```
 
+The shortest end-to-end demo is:
+
+```bash
+npm run build:cli
+bash scripts/demo-contract-impact.sh
+```
+
+See [docs/demo.md](docs/demo.md) for the fixture and expected evidence path.
+
 `make test` is the canonical offline check. It runs TypeScript checks for the CLI and dashboard plus the unit,
 integration, and end-to-end tests. The tests create temporary Git repositories
 and do not execute scripts from those repositories.
+
+The dashboard workspace can also be checked independently:
+
+```bash
+npm --workspace apps/dashboard run typecheck
+npm --workspace apps/dashboard run test
+npm --workspace apps/dashboard run build
+```
 
 ## CLI
 

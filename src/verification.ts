@@ -17,6 +17,7 @@ export interface VerificationResult {
 function redact(value: string): string {
   return value
     .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s]+/gi, "$1[REDACTED]")
+    .replace(/(["'](?:token|secret|password|api[_-]?key)["']\s*[:=]\s*["'])([^"']+)(["'])/gi, "$1[REDACTED]$3")
     .replace(/((?:token|secret|password|api[_-]?key)\s*[:=]\s*)[^\s]+/gi, "$1[REDACTED]");
 }
 

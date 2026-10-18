@@ -5,7 +5,7 @@ export const ReportVersion = z.literal("loom.report/v1");
 const Severity = z.enum(["critical", "high", "medium", "low"]);
 const FindingStatus = z.enum(["open", "reviewed", "resolved"]);
 const NodeKind = z.enum(["file", "module", "function", "type", "property", "route", "contract", "component", "consumer", "database-schema", "test", "package", "framework"]);
-const EdgeKind = z.enum(["imports", "exports", "declares", "contains", "uses-type", "reads-property", "returns-contract", "accepts-contract", "serves-route", "consumes-response", "defines-schema", "covered-by", "calls", "implements", "tested-by", "framework"]);
+const EdgeKind = z.enum(["imports", "exports", "declares", "contains", "uses-type", "reads-property", "returns-contract", "accepts-contract", "serves-route", "consumes-response", "defines-schema", "covered-by", "calls", "implements", "tested-by", "renders", "framework"]);
 
 export const ReportSchema = z.object({
   version: ReportVersion,
@@ -60,9 +60,10 @@ export const ReportSchema = z.object({
       value: z.string().min(1),
       source: z.string().min(1),
     })).min(1),
-    affectedNodeIds: z.array(z.string().min(1)).min(1),
+    affectedNodeIds: z.array(z.string().min(1)),
     recommendedAction: z.string().min(1),
     introducedIn: z.string().min(1),
+    uncertainty: z.array(z.string()).default([]),
   })),
   checks: z.array(z.object({
     id: z.string().min(1),
@@ -205,6 +206,7 @@ function adaptEngineReport(input: EngineReport): LoomReport {
       affectedNodeIds: affectedNodeIds.length ? affectedNodeIds : [consumerId].filter((id) => nodeIds.has(id)),
       recommendedAction: finding.kind === "renamed-field" ? `Update ${finding.consumer} to read ${finding.field}, or preserve a compatibility alias.` : `Review ${finding.consumer} and add a focused regression check before merging.`,
       introducedIn: input.repository.commit,
+      uncertainty: finding.uncertainty,
     };
   });
   const checks: LoomReport["checks"] = [];

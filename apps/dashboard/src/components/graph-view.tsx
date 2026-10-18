@@ -17,7 +17,9 @@ function GraphNodeCard({ data, selected }: NodeProps<Node<GraphData>>) {
 type GraphData = { label: string; path: string; kind: string; changed: boolean };
 const nodeTypes = { loom: GraphNodeCard };
 
-export function GraphView({ report, focusNodeId, compact = false }: { report: LoomReport; focusNodeId?: string; compact?: boolean }) {
+export interface GraphViewProps { report: LoomReport; focusNodeId?: string; compact?: boolean }
+
+export function GraphView({ report, focusNodeId, compact = false }: GraphViewProps) {
   const selectedNodeId = useDashboardStore((state) => state.selectedNodeId);
   const selectNode = useDashboardStore((state) => state.selectNode);
   const setSelectedNode = useCallback((id?: string) => selectNode(id), [selectNode]);

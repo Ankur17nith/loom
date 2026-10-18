@@ -7,5 +7,6 @@ coverage/
 !.env.example
 .loom/reports/
 .loom/cache/
+.agents/
 apps/dashboard/dist/
 *.log

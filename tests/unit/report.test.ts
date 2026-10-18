@@ -37,6 +37,25 @@ describe("versioned report adapter", () => {
     expect(adapted.report.findings[0]?.affectedNodeIds).toEqual(["contract:src/api.ts#User", "module:src/consumer.ts", "module:src/api.ts"]);
     expect(adapted.report.edges[0]?.source).toBe("module:src/consumer.ts");
   });
+
+  it("accepts a scan report without an embedded graph", () => {
+    const input = {
+      schemaVersion: 1,
+      version: "loom.report/v1",
+      reportId: "report-without-graph",
+      generatedAt: "2026-10-18T09:42:00.000Z",
+      repository: { name: "loom", branch: "main", commit: "123456789", baseCommit: "abcdefghi" },
+      base: "abcdefghi",
+      changedFiles: ["src/api.ts"],
+      summary: { modules: 1, changedFiles: 1, contractChanges: 0, findings: 0, high: 0, medium: 0, low: 0 },
+      contractChanges: [],
+      findings: [],
+    };
+    const adapted = reportFromJson(input);
+    expect(adapted.report.nodes).toEqual([]);
+    expect(adapted.report.edges).toEqual([]);
+    expect(adapted.report.findings).toEqual([]);
+  });
 });
 
 describe("finding filters", () => {

@@ -48,6 +48,7 @@ export const demoReport: LoomReport = {
       affectedNodeIds: ["payment-contract", "checkout-page", "checkout-api"],
       recommendedAction: "Handle pending_review in the checkout state map or keep the contract union backwards compatible.",
       introducedIn: "8e71c4f",
+      uncertainty: [],
     },
     {
       id: "finding-retry-boundary",
@@ -66,6 +67,7 @@ export const demoReport: LoomReport = {
       affectedNodeIds: ["checkout-api", "payment-client", "order-service"],
       recommendedAction: "Pass the original idempotency key through retries and add a duplicate-charge regression test.",
       introducedIn: "8e71c4f",
+      uncertainty: [],
     },
     {
       id: "finding-test-gap",
@@ -83,6 +85,7 @@ export const demoReport: LoomReport = {
       affectedNodeIds: ["checkout-api", "checkout-tests", "payment-client"],
       recommendedAction: "Add a test for a retry after a transient processor response.",
       introducedIn: "8e71c4f",
+      uncertainty: ["The current report records coverage context but does not execute a new check from the dashboard."],
     },
     {
       id: "finding-package-boundary",
@@ -100,6 +103,7 @@ export const demoReport: LoomReport = {
       affectedNodeIds: ["payments-package", "payment-client"],
       recommendedAction: "Keep the package contract check in the release verification set.",
       introducedIn: "8e71c4f",
+      uncertainty: [],
     },
   ],
   checks: [
