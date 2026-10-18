@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64" fill="none">
+  <!-- Loom Primary Horizontal Logo (Dark Surfaces) -->
+  <defs>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@700&amp;display=swap");
+      .loom-brand-text {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 47px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+    </style>
+  </defs>
+  <!-- Standalone Geometric L Symbol -->
+  <g id="loom-symbol">
+    <path d="M0 1H18V46H53V63H0V1Z" fill="#F4F5F7" />
+    <path d="M53 46H62V63H53V46Z" fill="#606264" />
+    <path d="M26 1H53V19H44V37H26V1Z" fill="#889CFF" />
+    <path d="M53 1H62V19H53V1Z" fill="#3E406D" />
+  </g>
+  <!-- Wordmark -->
+  <text x="82" y="50" class="loom-brand-text" fill="#F4F5F7">Loom</text>
+</svg>

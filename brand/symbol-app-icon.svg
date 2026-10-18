@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- Loom App Icon Container -->
+  <rect width="64" height="64" rx="14" fill="#09090B" stroke="#27272A" stroke-width="1.5" />
+  <!-- Centered Scaled Geometric L Symbol -->
+  <g transform="translate(10, 10) scale(0.6875)">
+    <!-- White L Front Face -->
+    <path d="M0 1H18V46H53V63H0V1Z" fill="#F4F5F7" />
+    <!-- White L Right 3D Facet -->
+    <path d="M53 46H62V63H53V46Z" fill="#606264" />
+    <!-- Cool Blue Accent Front Face -->
+    <path d="M26 1H53V19H44V37H26V1Z" fill="#889CFF" />
+    <!-- Cool Blue Accent Right 3D Facet -->
+    <path d="M53 1H62V19H53V1Z" fill="#3E406D" />
+  </g>
+</svg>

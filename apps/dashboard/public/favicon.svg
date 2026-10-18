@@ -1,8 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#09090b" />
-  <rect x="5" y="6" width="9" height="7" rx="1.5" fill="#f4f4f5" fill-opacity="0.9" />
-  <rect x="18" y="6" width="9" height="7" rx="1.5" fill="#f4f4f5" fill-opacity="0.9" />
-  <rect x="5" y="19" width="9" height="7" rx="1.5" fill="#f4f4f5" fill-opacity="0.9" />
-  <rect x="18" y="19" width="9" height="7" rx="1.5" fill="#f4f4f5" fill-opacity="0.9" />
-  <path d="M17.5 3L14.5 29" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <!-- Loom Favicon — Canonical Geometric L Symbol with Cool Blue Accent -->
+  <rect width="32" height="32" rx="7" fill="#09090B" />
+  <g transform="translate(5, 5) scale(0.34375)">
+    <!-- White L Front Face -->
+    <path d="M0 1H18V46H53V63H0V1Z" fill="#F4F5F7" />
+    <!-- White L Right 3D Facet -->
+    <path d="M53 46H62V63H53V46Z" fill="#606264" />
+    <!-- Cool Blue Accent Front Face -->
+    <path d="M26 1H53V19H44V37H26V1Z" fill="#889CFF" />
+    <!-- Cool Blue Accent Right 3D Facet -->
+    <path d="M53 1H62V19H53V1Z" fill="#3E406D" />
+  </g>
 </svg>
