@@ -43,6 +43,26 @@ await page.screenshot({ path: `${outputDir}/graph.png`, fullPage: true });
 results.push({ name: "graph-controls", matched: await page.locator(".graph-match-count").textContent(), inspector: await page.getByRole("complementary", { name: "Node inspector" }).count(), graphNodes: await page.locator(".react-flow__node").count() });
 await context.close();
 
+// Multi-viewport matrix testing (1280x800, 1024x768, 768x1024)
+const viewports = [
+  { name: "laptop", width: 1280, height: 800 },
+  { name: "tablet-landscape", width: 1024, height: 768 },
+  { name: "tablet-portrait", width: 768, height: 1024 },
+];
+
+for (const vp of viewports) {
+  const vpContext = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1 });
+  const vpPage = await vpContext.newPage();
+  await vpPage.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  await vpPage.waitForTimeout(300);
+  results.push({
+    name: `overview-${vp.name}`,
+    overflow: await vpPage.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+    dimensions: await vpPage.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: window.innerWidth, height: document.documentElement.scrollHeight })),
+  });
+  await vpContext.close();
+}
+
 const narrowContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
 const narrowPage = await narrowContext.newPage();
 for (const [name, route] of [["overview-narrow", "/"], ["findings-narrow", "/findings"], ["graph-narrow", "/graph"]]) {

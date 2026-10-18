@@ -32,13 +32,13 @@ context over reporting widgets.
 
 ## Responsive behavior
 
-- Desktop: 208px rail, 2-column Findings workspace, graph canvas plus inspector.
-- Tablet: collapse the rail and keep the Findings workspace as stacked queue then
-  inspector sections.
-- Narrow: stack review hero status, facts, queue, graph, and inspector; avoid
-  horizontal scrolling and keep controls at least 44px high where practical.
-- The Overview graph remains a useful preview with real nodes; it is not an empty
-  placeholder or a miniature dashboard chart.
+- Desktop: 216px rail, 2-column Findings workspace, graph canvas plus inspector.
+  Mobile navigation buttons (hamburger and close) are strictly hidden on desktop (min-width: 861px).
+- Tablet (768px - 1024px): collapse the rail into a slide-over drawer and stack queue and inspector.
+- Narrow (390px): stack review hero status, facts, queue, graph, and inspector; zero
+  horizontal scrolling, and all touch controls are at least 42-44px high.
+- The Overview graph remains a useful preview with real nodes centered via auto-fit;
+  the compact canvas uses a 2-row layout without the MiniMap overlay to maximize node visibility.
 
 ## Accessibility and behavior
 

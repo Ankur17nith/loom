@@ -31,9 +31,11 @@ metrics. The graph is a workspace, not a decorative chart.
 | Surface | `#11161D` | Work areas and artifact sections |
 | Raised surface | `#161C24` | Selected rows, controls, inspector blocks |
 | Strong surface | `#1B232D` | Focused review hero and graph nodes |
+| Selected surface | `#182433` | Active review item indicator |
 | Text | `#EDF2F7` | Primary reading content |
 | Secondary text | `#B8C2CE` | Supporting copy and evidence values |
-| Muted text | `#8794A4` | Labels, metadata, helper copy |
+| Muted text | `#9CB0C6` | Labels, metadata, helper copy (WCAG AA compliant) |
+| Low contrast helper | `#8295AB` | Tertiary metadata, pips, line marks (WCAG AA compliant) |
 | Interaction blue | `#87B4FF` | Selection, links, primary action, graph path |
 | Breaking red | `#FF7F83` | Critical/high risk and failed checks |
 | Uncertainty amber | `#F2BA62` | Incomplete evidence, skipped, inconclusive |
