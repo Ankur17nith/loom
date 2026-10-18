@@ -1,0 +1,45 @@
+:root {
+  color: #f0f2f5;
+  background: #0d0f12;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #0d0f12;
+}
+
+.dashboard-shell {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  padding: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #6c9eff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+h1 {
+  max-width: 620px;
+  margin: 0;
+  font-size: clamp(32px, 6vw, 64px);
+  line-height: 1.05;
+}
+
+.muted {
+  color: #b0b7c3;
+  font-size: 16px;
+}
