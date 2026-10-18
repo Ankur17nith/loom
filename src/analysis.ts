@@ -1,7 +1,7 @@
 import type { SourceInput } from "./parser.js";
 import { buildGraph, reverseImportReachability } from "./graph.js";
 import { changedFiles, listBaseSourceFiles, listCurrentSourceFiles, readBaseFile, readCurrentFile, repositoryRoot, resolveBase } from "./git.js";
-import type { AnalysisOptions, Contract, ContractChange, Finding, FindingEvidence, GraphSnapshot, LoomConfig, ParsedModule, RepositoryAnalysis, Severity, UsageEvidence } from "./types.js";
+import type { AnalysisOptions, Contract, ContractChange, Finding, FindingEvidence, GraphSnapshot, LoomConfig, ParsedModule, PropertyAccess, RepositoryAnalysis, Severity, UsageEvidence } from "./types.js";
 import { compareStrings, lineText, stableId, uniqueSorted } from "./utils.js";
 
 function inputsForCurrent(root: string, config: LoomConfig): SourceInput[] {
@@ -116,10 +116,13 @@ function detectFindings(changes: ContractChange[], baseline: GraphSnapshot, curr
     }
     if (change.kind === "added-required-field") {
       const reachability = reverseImportReachability(current, change.contractPath);
+      const accessMatches = (access: PropertyAccess) =>
+        access.contractNames.includes(change.contract) ||
+        Boolean(access.resolvedContracts?.some((ref: { path: string; name: string }) => ref.path === change.contractPath && ref.name === change.contract));
       for (const consumer of uniqueSorted([...reachability.keys()].filter((candidate) => candidate !== change.contractPath))) {
         const module = current.modules.find((candidate) => candidate.path === consumer);
-        if (!module || !module.propertyAccesses.some((access) => access.contractNames.includes(change.contract))) continue;
-        const access = module.propertyAccesses.find((candidate) => candidate.contractNames.includes(change.contract));
+        if (!module || !module.propertyAccesses.some(accessMatches)) continue;
+        const access = module.propertyAccesses.find(accessMatches);
         if (access) findings.push(findingFor(change, { module: consumer, contractPath: change.contractPath, contract: change.contract, field: change.field, relation: "typed-property", text: access.text, resolved: true, line: access.line, column: access.column }, consumer, current, false));
       }
     }

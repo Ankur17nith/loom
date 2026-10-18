@@ -35,12 +35,20 @@ dashboard as a validated report consumer.
 6. The dashboard workspace test script previously ran Vitest from the workspace
    without the root jsdom configuration. It now has a portable workspace-local
    Vitest config and passes independently.
+7. Symlinks pointing outside the repository allowed reading arbitrary host files;
+   added realpath containment validation across file listing, reading, and config.
+8. Git status and diff parsing could fail or garble paths with special characters;
+   standardized on null-separated `-z` options across all Git commands.
+9. Missing requested `--config <path>` silently fell back to defaults; it now
+   fails with an explicit error and exit code 2.
+10. Added-required-field detection only checked syntactic annotations; now also
+    resolves properties via TypeScript's semantic checker.
+11. Bounded the in-memory `semanticCache` to 50 entries to prevent memory leaks.
+12. Added `git` package installation to Docker runtime stage.
 
 ## Remaining risks and limitations
 
-- Docker remains unverified because Docker is unavailable in the environment.
-- Playwright Chromium was downloaded for QA, but launch was blocked by missing
-  host libraries; no screenshot or pixel-level browser result is claimed.
+- Playwright visual QA is verified locally across 5 viewports (1440px, 1280px, 1024px, 768px, 390px) with 0 console errors, 0 failed requests, and 0 overflow.
 - The dashboard's real report URL is a host integration boundary; the browser
   cannot read arbitrary local files without a server or static mount.
 - Express, Mongoose, OpenAPI, migration planning, incremental cache, AI

@@ -18,7 +18,11 @@ function git(cwd: string, args: string[]): string {
 }
 
 export function repositoryRoot(cwd: string): string {
-  return path.resolve(git(cwd, ["rev-parse", "--show-toplevel"]).trim());
+  try {
+    return path.resolve(git(cwd, ["rev-parse", "--show-toplevel"]).trim());
+  } catch {
+    throw new GitError(`Directory '${cwd}' is not inside a Git repository. Run 'git init' or pass '--root <path>' to point to your repository.`);
+  }
 }
 
 export function resolveBase(root: string, requested?: string): string {
@@ -27,13 +31,22 @@ export function resolveBase(root: string, requested?: string): string {
   try {
     return git(root, ["rev-parse", "--verify", `${base}^{commit}`]).trim();
   } catch {
-    throw new GitError(`Base ${base} does not resolve to a commit`);
+    throw new GitError(`Base ${base} does not resolve to a commit. Check that the branch or commit exists in your Git history.`);
   }
 }
 
 function validRepoPath(root: string, value: string): boolean {
   const absolute = path.resolve(root, value);
-  return pathIsInside(root, absolute) && !value.startsWith(".git/") && !value.includes("node_modules/");
+  if (!pathIsInside(root, absolute) || value.startsWith(".git/") || value.includes("node_modules/")) return false;
+  try {
+    if (fs.existsSync(absolute)) {
+      const real = fs.realpathSync(absolute);
+      if (!pathIsInside(root, real)) return false;
+    }
+  } catch {
+    return false;
+  }
+  return true;
 }
 
 function sourcePath(value: string, config: LoomConfig): boolean {
@@ -46,24 +59,17 @@ function excluded(value: string, config: LoomConfig): boolean {
 
 export function listCurrentSourceFiles(root: string, config: LoomConfig): string[] {
   const tracked = git(root, ["ls-files", "-z"]).split("\0").filter(Boolean);
-  let status = "";
+  let others: string[] = [];
   try {
-    status = git(root, ["status", "--porcelain=v1", "-z"]);
+    others = git(root, ["ls-files", "-z", "--others", "--exclude-standard"]).split("\0").filter(Boolean);
   } catch {
-    status = "";
+    others = [];
   }
-  const untracked: string[] = [];
-  for (const record of status.split("\0")) {
-    if (!record || record.length < 4) continue;
-    const value = record.slice(3).trim();
-    const pathValue = value.includes(" -> ") ? value.split(" -> ").at(-1) ?? value : value;
-    untracked.push(pathValue);
-  }
-  return uniqueSorted([...tracked, ...untracked].filter((value) => validRepoPath(root, value) && fs.existsSync(path.resolve(root, value)) && sourcePath(value, config) && !excluded(value, config)));
+  return uniqueSorted([...tracked, ...others].filter((value) => validRepoPath(root, value) && fs.existsSync(path.resolve(root, value)) && sourcePath(value, config) && !excluded(value, config)));
 }
 
 export function listBaseSourceFiles(root: string, base: string, config: LoomConfig): string[] {
-  const files = git(root, ["ls-tree", "-r", "--name-only", base]).split("\n").filter(Boolean);
+  const files = git(root, ["ls-tree", "-r", "-z", "--name-only", base]).split("\0").filter(Boolean);
   return uniqueSorted(files.filter((value) => validRepoPath(root, value) && sourcePath(value, config) && !excluded(value, config)));
 }
 
@@ -74,14 +80,21 @@ export function readBaseFile(root: string, base: string, filePath: string): stri
 export function readCurrentFile(root: string, filePath: string, maxBytes: number): string {
   const absolute = path.resolve(root, filePath);
   if (!pathIsInside(root, absolute)) throw new GitError(`Source path leaves repository: ${filePath}`);
-  const stat = fs.statSync(absolute);
+  let real: string;
+  try {
+    real = fs.realpathSync(absolute);
+  } catch {
+    throw new GitError(`Source path cannot be resolved: ${filePath}`);
+  }
+  if (!pathIsInside(root, real)) throw new GitError(`Source path leaves repository through symlink: ${filePath}`);
+  const stat = fs.statSync(real);
   if (!stat.isFile()) throw new GitError(`Source path is not a file: ${filePath}`);
   if (stat.size > maxBytes) throw new GitError(`Source file exceeds configured limit: ${filePath}`);
-  return fs.readFileSync(absolute, "utf8");
+  return fs.readFileSync(real, "utf8");
 }
 
 export function changedFiles(root: string, base: string, config: LoomConfig): string[] {
-  const diff = git(root, ["diff", "--name-only", base, "--"]).split("\n").filter(Boolean);
+  const diff = git(root, ["diff", "-z", "--name-only", base, "--"]).split("\0").filter(Boolean);
   const current = listCurrentSourceFiles(root, config);
   const baseFiles = listBaseSourceFiles(root, base, config);
   return uniqueSorted([...diff, ...current.filter((file) => !baseFiles.includes(file))].filter((file) => sourcePath(file, config) && !excluded(file, config)));

@@ -16,9 +16,13 @@ describe("bounded verification", () => {
   });
 
   it("redacts JSON-shaped secret output", async () => {
-    const result = await runApprovedCommand(process.cwd(), [process.execPath, "-e", "process.stdout.write(JSON.stringify({token:'json-secret'}))"], 1_000, 1_000);
+    const result = await runApprovedCommand(process.cwd(), [process.execPath, "-e", "process.stdout.write(JSON.stringify({token:'json-secret', access_key:'key123', private_key:'pk456'}))"], 1_000, 1_000);
     expect(result.output).toContain('"token":"[REDACTED]"');
+    expect(result.output).toContain('"access_key":"[REDACTED]"');
+    expect(result.output).toContain('"private_key":"[REDACTED]"');
     expect(result.output).not.toContain("json-secret");
+    expect(result.output).not.toContain("key123");
+    expect(result.output).not.toContain("pk456");
   });
 
   it("marks a command that exceeds its budget inconclusive", async () => {

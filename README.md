@@ -39,9 +39,9 @@ directory and `LOOM_DASHBOARD_URL` to target a different running server.
 
 The visual system is documented in
 [`design-system/loom/MASTER.md`](design-system/loom/MASTER.md). It uses a
-neutral evidence-workbench palette, IBM Plex Sans/JetBrains Mono type roles,
-4px spacing rhythm, restrained borders, and blue/red/amber/green semantics for
-interaction, breaking risk, uncertainty, and explicit verification.
+Faultline-inspired technical dark palette (obsidian/zinc surfaces with ember/iris/proof accents),
+Inter and JetBrains Mono type roles, 4px spacing rhythm, restrained borders, and
+high-contrast WCAG AA status indicators for interaction, breaking risk, uncertainty, and explicit verification.
 
 ## Core engine status
 
@@ -136,13 +136,14 @@ The codes are stable across commands:
 
 | Code | Meaning |
 | ---: | --- |
-| `0` | Command completed; `ci` found no finding at or above its threshold |
-| `1` | `ci` found a finding at or above `--fail-on` |
+| `0` | Command completed; `ci` found no finding at or above its threshold; `test` passed all checks or was not run |
+| `1` | `ci` found a finding at or above `--fail-on`; `test --run` failed one or more verification checks |
 | `2` | Usage, configuration, repository, or Git base error |
 | `3` | Analysis or unexpected execution error |
 
 `scan`, `impact`, `graph`, `report`, and `explain` return `0` when their
-requested operation succeeds, even when findings are present.
+requested operation succeeds, even when findings are present. `test` returns `0`
+when verification commands pass or when run without `--run` (dry inspect mode).
 
 ## Configuration
 

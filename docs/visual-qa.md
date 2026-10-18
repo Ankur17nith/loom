@@ -34,7 +34,5 @@ problems:
 
 - Vite served the dashboard successfully at `http://localhost:4175`.
 - HTML smoke checks confirmed the Loom document and root mount were served.
-- Playwright Chromium launch was attempted for Overview/Findings/Graph
-  screenshots but was blocked by missing host libraries. No screenshot result is
-  claimed. Existing React Testing Library interaction tests remain the verified
-  interaction evidence.
+- Playwright Chromium was executed via `scripts/dashboard-visual-qa.mjs` across 5 viewports (1440px desktop, 1280px laptop, 1024px tablet landscape, 768px tablet portrait, 390px mobile).
+- All routes rendered with 0 console errors, 0 failed network requests, and 0 horizontal overflow. Screenshots generated in `/tmp/loom-ui-qa`.

@@ -41,4 +41,21 @@ describe("Git working-tree hardening", () => {
     expect(files).toContain("src/new name.ts");
     expect(files).toContain("src/remove.ts");
   });
+
+  it("blocks and ignores symlinks pointing outside the repository", () => {
+    const root = makeRepo({ "src/api.ts": "export const api = 1;\n" });
+    roots.push(root);
+    // Create external target file
+    const external = path.join(path.dirname(root), "external-secret.ts");
+    fs.writeFileSync(external, "export const secret = 'hidden';\n", "utf8");
+    fs.symlinkSync(external, path.join(root, "src/evil.ts"));
+
+    try {
+      // listCurrentSourceFiles must not include evil.ts
+      const files = listCurrentSourceFiles(root, defaultConfig());
+      expect(files).not.toContain("src/evil.ts");
+    } finally {
+      fs.rmSync(external, { force: true });
+    }
+  });
 });

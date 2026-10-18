@@ -56,6 +56,7 @@ function semanticPropertyRefs(inputs: SourceInput[]): Map<string, { path: string
   const cacheKey = inputs.map((input) => `${input.path}\0${input.source}`).join("\0");
   const cached = semanticCache.get(cacheKey);
   if (cached) return cached;
+  if (semanticCache.size > 50) semanticCache.clear();
   const virtualRoot = path.resolve("/.loom-virtual-analysis");
   const fileNames = new Map(inputs.map((input) => [path.resolve(virtualRoot, input.path), input]));
   const compilerOptions: ts.CompilerOptions = {

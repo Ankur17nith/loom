@@ -39,12 +39,23 @@ function configPath(root: string, requested?: string): string {
   if (path.isAbsolute(relative)) throw new ConfigError("Config path must be repository-relative");
   const resolved = path.resolve(root, relative);
   if (!pathIsInside(root, resolved)) throw new ConfigError("Config path must stay inside the repository");
+  if (fs.existsSync(resolved)) {
+    try {
+      const real = fs.realpathSync(resolved);
+      if (!pathIsInside(root, real)) throw new ConfigError("Config path must stay inside the repository");
+    } catch (error) {
+      if (error instanceof ConfigError) throw error;
+    }
+  }
   return resolved;
 }
 
 export function loadConfig(root: string, requested?: string): LoomConfig {
   const defaults = defaultConfig();
   const filePath = configPath(root, requested);
+  if (requested && !fs.existsSync(filePath)) {
+    throw new ConfigError(`Config file not found: ${normalizeRepoPath(path.relative(root, filePath))}`);
+  }
   const legacyPath = configPath(root, LEGACY_CONFIG_FILE);
   const effectivePath = !requested && !fs.existsSync(filePath) && fs.existsSync(legacyPath) ? legacyPath : filePath;
   if (!fs.existsSync(effectivePath)) return defaults;
