@@ -41,82 +41,118 @@ export function OverviewPage({ report }: { report: LoomReport }) {
     <PageHeader eyebrow="Change review" title="Review the blast radius" description={`${report.repository.name} · ${report.repository.branch} · compared with ${report.repository.baseCommit.slice(0, 7)}`} actions={<><Button variant="secondary" onClick={() => navigate("/reports")}><FileText size={15} aria-hidden="true" /> Report artifact</Button><Button variant="primary" onClick={() => navigate(primary ? `/findings/${primary.id}` : "/findings")}>{primary ? "Review highest risk" : "Review findings"}<ArrowUpRight size={15} aria-hidden="true" /></Button></>} />
     {isDemo && <div className="source-strip"><CircleOff size={15} aria-hidden="true" /><span>Preview report</span><strong>Synthetic fixture</strong><span>·</span><span>Set <code>VITE_LOOM_REPORT_URL</code> to load a validated artifact.</span></div>}
 
-    <section className="review-hero" aria-label="Review summary">
-      <div className="review-hero-copy">
-        <span className="section-kicker">Priority review</span>
-        <h2>{primary ? primary.title : "No findings need review"}</h2>
-        <p>{primary ? primary.summary : "The current report has no findings. Review the report artifact for provenance and attached checks."}</p>
-        {primary && <div className="hero-actions">
-          <Button variant="primary" onClick={() => navigate(`/findings/${primary.id}`)}>
-            <ShieldAlert size={15} aria-hidden="true" /> Open evidence
-          </Button>
-          <button className="quiet-link" type="button" onClick={() => navigate(`/graph?finding=${primary.id}`)}>
-            <GitBranch size={14} aria-hidden="true" /> Trace in graph
-          </button>
-        </div>}
+    {/* Figma Hero Priority Break Card */}
+    <section className="hero-break-card" aria-label="Priority review">
+      <div className="hero-break-header">
+        <div className="hero-break-tag">
+          <ShieldAlert size={15} aria-hidden="true" />
+          <span>PRIORITY CONTRACT BREAKAGE</span>
+        </div>
+        <div className={cn("verification-gate-pill", stats.verification === "passing" ? "passing" : stats.verification === "failed" ? "failing" : "partial")}>
+          {stats.verification === "passing" ? <CheckCircle2 size={13} aria-hidden="true" /> : <ShieldAlert size={13} aria-hidden="true" />}
+          <span>Gate {verificationLabel(stats.verification).toLowerCase()}</span>
+        </div>
       </div>
-      <div className="review-hero-status">
-        <div className="hero-status-label">
-          <span className={cn("status-pip", `status-pip-${stats.verification}`)} aria-hidden="true" />Verification gate
-        </div>
-        <strong>{verificationLabel(stats.verification)}</strong>
-        <span>{checks.passed} passed · {checks.incomplete} incomplete · {checks.failed} failed</span>
-        <div className="hero-status-rule" role="progressbar" aria-valuenow={stats.checksTotal ? Math.round((stats.checksPassed / stats.checksTotal) * 100) : 0} aria-valuemin={0} aria-valuemax={100} aria-label="Checks passed">
-          <span style={{ width: `${stats.checksTotal ? `${Math.round((stats.checksPassed / stats.checksTotal) * 100)}%` : "0%"}` }} />
-        </div>
+      <h2 className="hero-break-title">
+        {primary ? primary.title : "No findings need review"}
+      </h2>
+      <p className="hero-break-desc">
+        {primary ? primary.summary : "The current report has no contract breakage findings. Review the report artifact for provenance and attached checks."}
+      </p>
+      <div className="hero-break-meta">
+        {primary && <>
+          <span><strong>{primary.affectedNodeIds.length}</strong> affected consumers</span>
+          <span><strong>{formatConfidence(primary.confidence)}</strong> confidence</span>
+          <span>Rule: <code>{primary.category}</code></span>
+          <span>Location: <code>{primary.location.file}:{primary.location.line}</code></span>
+        </>}
+        {!primary && <span>Clean baseline snapshot</span>}
+      </div>
+      {primary && <div className="hero-actions" style={{ marginTop: 6 }}>
+        <Button variant="primary" onClick={() => navigate(`/findings/${primary.id}`)}>
+          <ShieldAlert size={15} aria-hidden="true" /> Open evidence
+        </Button>
+        <button className="quiet-link" type="button" onClick={() => navigate(`/graph?finding=${primary.id}`)}>
+          <GitBranch size={14} aria-hidden="true" /> Trace in graph
+        </button>
+      </div>}
+    </section>
+
+    {/* Figma Metric Strip */}
+    <section className="metric-strip" aria-label="Change surface numbers">
+      <div className="metric-box">
+        <span className="metric-label">Findings</span>
+        <span className={cn("metric-val", stats.findings > 0 ? "text-red" : "text-green")}>{stats.findings}</span>
+        <span className="metric-sub">{stats.highRisk} high-risk</span>
+      </div>
+      <div className="metric-box">
+        <span className="metric-label">Affected Nodes</span>
+        <span className="metric-val text-ember">{stats.affectedNodes}</span>
+        <span className="metric-sub">{stats.filesChanged} file{stats.filesChanged === 1 ? "" : "s"} changed</span>
+      </div>
+      <div className="metric-box">
+        <span className="metric-label">Verification Gate</span>
+        <span className={cn("metric-val", stats.verification === "passing" ? "text-green" : stats.verification === "failed" ? "text-red" : "text-iris")}>
+          {stats.checksTotal ? `${Math.round((stats.checksPassed / stats.checksTotal) * 100)}%` : "100%"}
+        </span>
+        <span className="metric-sub">{stats.checksPassed}/{stats.checksTotal} checks passed</span>
+      </div>
+      <div className="metric-box">
+        <span className="metric-label">Confidence</span>
+        <span className="metric-val text-iris">{formatConfidence(averageConfidence(report))}</span>
+        <span className="metric-sub">Resolved compiler bindings</span>
       </div>
     </section>
 
-    <section className="review-facts" aria-label="Change surface">
-      <Fact label="Findings" value={String(stats.findings)} note={`${stats.highRisk} high-risk`} tone="danger" />
-      <Fact label="Changed files" value={String(stats.filesChanged)} note={`${stats.contractChanges} contract change${stats.contractChanges === 1 ? "" : "s"}`} tone="blue" />
-      <Fact label="Affected nodes" value={String(stats.affectedNodes)} note="Evidence-linked surface" tone="amber" />
-      <Fact label="Confidence" value={formatConfidence(averageConfidence(report))} note="Static evidence weight" tone="muted" />
-    </section>
-
-    <div className="overview-columns">
-      <section className="section-block review-queue-block">
-        <SectionHeading eyebrow="Start here" title="Review queue" action={<Link className="inline-link" to="/findings">View all <ArrowUpRight size={13} aria-hidden="true" /></Link>} />
-        <div className="review-queue">
-          {urgent.slice(0, 4).map((finding) => <button className="queue-item" type="button" key={finding.id} onClick={() => navigate(`/findings/${finding.id}`)} aria-label={`Open finding ${finding.title}`}>
-            <span className={cn("queue-severity", `queue-severity-${finding.severity}`)} aria-hidden="true" />
-            <span className="queue-copy">
-              <strong>{finding.title}</strong>
-              <span>
+    {/* Figma 2-Column Overview Grid */}
+    <div className="overview-grid">
+      <section className="overview-panel" aria-label="Review queue">
+        <div className="panel-head">
+          <h2>Review Queue</h2>
+          <span className="queue-badge">{stats.findings} unreviewed</span>
+        </div>
+        <div className="queue-list">
+          {urgent.slice(0, 4).map((finding) => (
+            <button
+              className="queue-item"
+              type="button"
+              key={finding.id}
+              onClick={() => navigate(`/findings/${finding.id}`)}
+              aria-label={`Open finding ${finding.title}`}
+            >
+              <div className="queue-item-top">
+                <span className={cn("tag", `tag-${finding.severity}`)}>{finding.severity}</span>
+                <span className="queue-confidence">{formatConfidence(finding.confidence)}</span>
+              </div>
+              <h3 className="queue-item-title">{finding.title}</h3>
+              <div className="queue-item-bottom">
                 <code>{finding.location.file}:{finding.location.line}</code>
-                <span>{finding.category}</span>
-              </span>
-            </span>
-            <span className="queue-confidence">{formatConfidence(finding.confidence)}</span>
-            <ChevronRight size={16} aria-hidden="true" />
-          </button>)}
+                <span>{finding.affectedNodeIds.length} consumers</span>
+              </div>
+            </button>
+          ))}
+          {urgent.length === 0 && (
+            <div style={{ padding: 24 }}>
+              <EmptyState icon={<CheckCircle2 size={20} />} title="Queue is clear" description="No findings are attached to this report." />
+            </div>
+          )}
         </div>
-        {urgent.length === 0 && <EmptyState icon={<CheckCircle2 size={20} />} title="Queue is clear" description="No findings are attached to this report." />}
       </section>
 
-      <section className="section-block change-block">
-        <SectionHeading eyebrow="Change surface" title="What moved" action={<Link className="inline-link" to="/graph">Open graph <ArrowUpRight size={13} aria-hidden="true" /></Link>} />
-        <div className="change-lines">
-          <ChangeLine label="Contracts" value={stats.contractChanges} detail="changed declarations" icon={<Code2 size={16} aria-hidden="true" />} />
-          <ChangeLine label="Consumers" value={stats.affectedNodes} detail="nodes in evidence paths" icon={<GitBranch size={16} aria-hidden="true" />} />
-          <ChangeLine label="Checks" value={stats.checksTotal} detail={stats.checksTotal ? `${stats.checksPassed} passing` : "not run"} icon={<FileCheck2 size={16} aria-hidden="true" />} />
+      <section className="overview-panel" aria-label="Impact preview">
+        <div className="panel-head">
+          <h2>Impact Preview</h2>
+          <button className="text-btn" type="button" onClick={() => navigate("/graph")}>
+            Full graph <ChevronRight size={14} aria-hidden="true" />
+          </button>
         </div>
-        <div className="change-commit">
-          <span>Report generated</span>
-          <code>{formatReportDate(report.generatedAt)}</code>
-          <span>at</span>
-          <code>{report.repository.commit.slice(0, 7)}</code>
+        <div className="overview-graph-wrap" style={{ minHeight: 280, flex: 1 }}>
+          <DeferredGraphView report={report} compact />
         </div>
       </section>
     </div>
 
-    <section className="section-block overview-graph">
-      <SectionHeading eyebrow="Context, not decoration" title="Impact preview" action={<Link className="inline-link" to="/graph">Use full workspace <ArrowUpRight size={13} aria-hidden="true" /></Link>} />
-      <div className="overview-graph-wrap">
-        <DeferredGraphView report={report} compact />
-      </div>
-    </section>
-
+    {/* Attached Verification */}
     <section className="verification-strip">
       <div>
         <span className="section-kicker">Attached verification</span>

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { demoReport } from "../data/demo-report.js";
-import { FindingsPage, FindingDetailPage } from "../pages/dashboard-pages.js";
+import { FindingsPage, FindingDetailPage, OverviewPage, VerificationPage, SettingsPage } from "../pages/dashboard-pages.js";
 import { AppLayout } from "./layout.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 
@@ -56,5 +56,27 @@ describe("dashboard components", () => {
     render(<MemoryRouter initialEntries={["/findings"]}><Routes><Route path="/findings" element={<FindingsPage report={demoReport} />} /><Route path="/findings/:findingId" element={<div>Finding details route</div>} /></Routes></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: /Open finding Payment status contract changed/ }));
     expect(screen.getByText("Finding details route")).toBeInTheDocument();
+  });
+
+  it("renders the Figma priority break hero card and metric strip in Overview", () => {
+    resetStore();
+    render(<MemoryRouter initialEntries={["/"]}><OverviewPage report={demoReport} /></MemoryRouter>);
+    expect(screen.getByText("PRIORITY CONTRACT BREAKAGE")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Priority review" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Change surface numbers" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Review queue" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Impact preview" })).toBeInTheDocument();
+  });
+
+  it("renders verification gate and check output in Verification", () => {
+    render(<MemoryRouter initialEntries={["/verification"]}><VerificationPage report={demoReport} /></MemoryRouter>);
+    expect(screen.getByText("Overall gate")).toBeInTheDocument();
+    expect(screen.getByText("TypeScript")).toBeInTheDocument();
+  });
+
+  it("renders workspace settings in Settings", () => {
+    render(<MemoryRouter initialEntries={["/settings"]}><SettingsPage report={demoReport} /></MemoryRouter>);
+    expect(screen.getByText("Report source")).toBeInTheDocument();
+    expect(screen.getByText("Schema validation")).toBeInTheDocument();
   });
 });
