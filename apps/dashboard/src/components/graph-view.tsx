@@ -43,8 +43,8 @@ export function GraphView({ report, focusNodeId, compact = false }: GraphViewPro
     id: edge.id, source: edge.source, target: edge.target, label: compact ? undefined : edge.kind,
     animated: Boolean(selectedNodeId && highlight.edgeIds.has(edge.id)),
     className: selectedNodeId && !highlight.edgeIds.has(edge.id) ? "graph-edge-dimmed" : "",
-    markerEnd: { type: MarkerType.ArrowClosed, color: selectedNodeId && highlight.edgeIds.has(edge.id) ? "#86a9ff" : "#536174" },
-    style: { stroke: selectedNodeId && highlight.edgeIds.has(edge.id) ? "#86a9ff" : "#536174", strokeWidth: selectedNodeId && highlight.edgeIds.has(edge.id) ? 2 : 1.3 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: selectedNodeId && highlight.edgeIds.has(edge.id) ? "#6c9eff" : "#536174" },
+    style: { stroke: selectedNodeId && highlight.edgeIds.has(edge.id) ? "#6c9eff" : "#536174", strokeWidth: selectedNodeId && highlight.edgeIds.has(edge.id) ? 2.5 : 1.3 },
     hidden: relation !== "all" && edge.kind !== relation,
   })), [report.edges, compact, selectedNodeId, highlight.edgeIds, relation]);
   return <div className={cn("graph-canvas", compact && "graph-canvas-compact")} aria-label="Impact graph">
@@ -52,7 +52,7 @@ export function GraphView({ report, focusNodeId, compact = false }: GraphViewPro
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.16 }} minZoom={0.35} maxZoom={1.5} onInit={setFlow} onNodeClick={(_, node) => setSelectedNode(node.id)} onPaneClick={() => setSelectedNode(undefined)} proOptions={{ hideAttribution: true }}>
       <Background color="#293342" gap={24} size={1} />
       <Controls showInteractive={false} />
-      {!compact && <MiniMap nodeColor={(node) => node.data?.changed ? "#86a9ff" : "#536174"} maskColor="rgba(9, 12, 17, .75)" />}
+       {!compact && <MiniMap nodeColor={(node) => node.data?.changed ? "#6c9eff" : "#536174"} maskColor="rgba(9, 12, 17, .75)" />}
     </ReactFlow>
     <div className="graph-legend"><span><i className="legend-dot legend-changed" />Changed</span><span><i className="legend-dot legend-linked" />Selected path</span><span>Click a node to trace impact</span></div>
     {!compact && <details className="graph-alternative"><summary>Accessible relationship list</summary><ul>{report.edges.filter((edge) => relation === "all" || edge.kind === relation).map((edge) => <li key={edge.id}><code>{report.nodes.find((node) => node.id === edge.source)?.label ?? edge.source}</code><span>{edge.kind}</span><code>{report.nodes.find((node) => node.id === edge.target)?.label ?? edge.target}</code></li>)}</ul></details>}
