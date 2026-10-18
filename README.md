@@ -14,15 +14,23 @@ not invent findings.
 ## Dashboard
 
 The dashboard combines a compact dark developer-tool shell, evidence-first
-finding detail, and a React Flow impact graph. It loads a validated report from
-`VITE_LOOM_REPORT_URL` when that variable is set. Without a URL it uses an
-explicitly labeled synthetic fixture so the UI can be previewed without a
-repository; demo data is never presented as engine output.
+finding detail, and a React Flow impact graph. It is local-first and connects
+directly to authentic Loom reports produced by the CLI:
+
+1. **Direct file upload**: Drag and drop any `.loom/reports/report.json` file directly into the dashboard or click "Select from disk".
+2. **Local dev server**: Vite serves `.loom/reports/report.json` automatically at `/reports/report.json`.
+3. **Environment or URL**: Set `VITE_LOOM_REPORT_URL=/reports/report.json` or pass `?report=/reports/report.json`.
+4. **Explicit demo preview**: Demo mode is never loaded silently. When no report is configured, an honest connect screen is shown. Demo mode can be explicitly activated via `?demo=true` or by clicking "Launch demo fixture".
 
 ```bash
+# In your repository, generate a complete report with graph:
+node dist/cli.js report --format json --output .loom/reports/report.json
+
+# Launch the dashboard:
 npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
+
+# Or launch with report pre-configured:
 VITE_LOOM_REPORT_URL=/reports/report.json npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
-npm run qa:dashboard
 ```
 
 It supports overview, graph, findings, finding details, verification artifact
@@ -69,6 +77,8 @@ limitations.
 - Node.js `22.23.3` (pinned in `.nvmrc`)
 - npm `10.9.9` or newer
 - Git
+
+Ensure normal strict TLS certificate validation is enabled in your environment (if inherited externally, run `unset NODE_TLS_REJECT_UNAUTHORIZED`).
 
 ```bash
 npm ci
