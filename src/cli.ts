@@ -73,7 +73,24 @@ function writeResult(root: string, requested: string | undefined, text: string):
   if (path.isAbsolute(requested)) throw new CliFailure(2, "Output path must be repository-relative");
   const destination = path.resolve(root, requested);
   if (!pathIsInside(root, destination)) throw new CliFailure(2, "Output path must stay inside the repository");
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  if (fs.existsSync(destination)) {
+    try {
+      const real = fs.realpathSync(destination);
+      if (!pathIsInside(root, real)) throw new CliFailure(2, "Output path must stay inside the repository");
+    } catch (error) {
+      if (error instanceof CliFailure) throw error;
+    }
+  }
+  const parent = path.dirname(destination);
+  if (fs.existsSync(parent)) {
+    try {
+      const realParent = fs.realpathSync(parent);
+      if (!pathIsInside(root, realParent)) throw new CliFailure(2, "Output path must stay inside the repository");
+    } catch (error) {
+      if (error instanceof CliFailure) throw error;
+    }
+  }
+  fs.mkdirSync(parent, { recursive: true });
   fs.writeFileSync(destination, text, "utf8");
 }
 
