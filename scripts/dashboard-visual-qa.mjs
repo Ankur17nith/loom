@@ -14,6 +14,7 @@ const routes = [
   ["findings", "/findings"],
   ["verification", "/verification"],
   ["reports", "/reports"],
+  ["brand", "/brand"],
 ];
 
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
