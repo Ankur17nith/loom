@@ -13,3 +13,5 @@ apps/dashboard/dist/
 artifacts/demo-video/*.mp4
 artifacts/demo-video/*.wav
 demo-platform/
+.venv_audio/
+artifacts/demo-video/backup_original/
