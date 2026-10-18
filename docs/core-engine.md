@@ -6,8 +6,10 @@ Loom's CLI is a bounded pipeline:
    JSON config, resolve the base commit, enumerate tracked and untracked source
    files, and read the base contents with `git show`.
 2. **Parse.** Create a TypeScript `SourceFile` for each supported file. The
-   parser records public interfaces/type aliases, imports/re-exports, typed
-   property accesses, JSX tags/props, parse diagnostics, and framework signals.
+    parser records public interfaces/type aliases, imports/re-exports, typed
+    property accesses, JSX tags/props, parse diagnostics, and framework signals.
+    A bounded in-memory `Program` and `TypeChecker` resolve property symbols
+    when local source files make that relationship available.
 3. **Build graphs.** Each snapshot has module, exported-contract, and framework
    nodes. Import, export, type-use, property-read, render, and framework edges
    are sorted and assigned stable IDs. Relative imports resolve across the
@@ -26,9 +28,10 @@ Loom's CLI is a bounded pipeline:
 
 ## Report shape
 
-The JSON report has `schemaVersion: 1`, the resolved base commit, changed
-repository-relative files, a summary, contract changes, and findings. `report`
-adds the current graph; `impact` adds `impactedFiles`. A finding contains:
+The JSON report has `schemaVersion: 1`, `version: "loom.report/v1"`, report and
+repository metadata, the resolved base commit, changed repository-relative
+files, a summary, contract changes, and findings. `report` adds the current
+graph; `impact` adds `impactedFiles`. A finding contains:
 
 - `id`, `kind`, `severity`, and a repository-relative consumer
 - contract path/name and old/new field names when applicable
@@ -44,8 +47,9 @@ application code. `doctor` only checks local prerequisites.
 
 ## Known boundaries
 
-The graph is syntax-derived rather than a full TypeScript type checker. It is
-not a runtime dependency graph and does not resolve package exports, aliases
+The graph uses TypeScript's checker for local property resolution but remains
+bounded rather than a complete project type model. It is not a runtime
+dependency graph and does not resolve package exports, aliases
 from arbitrary build tools, declaration merging, conditional/mapped type
 semantics, reflection, or dynamic property names. React and Express support is
 limited to detection signals. JSX prop matching relies on an imported module

@@ -1,4 +1,5 @@
 import path from "node:path";
+import * as ts from "typescript";
 import { parseSource, type SourceInput } from "./parser.js";
 import { compareStrings, normalizeRepoPath, stableId, uniqueSorted } from "./utils.js";
 import type { Contract, Framework, GraphEdge, GraphNode, GraphSnapshot, ImportRecord, ParsedModule, PropertyAccess, UsageEvidence } from "./types.js";
@@ -36,6 +37,7 @@ function importedContract(module: ParsedModule, imported: ImportRecord, resolved
 }
 
 function refsForProperty(module: ParsedModule, access: PropertyAccess, paths: Set<string>, contracts: Map<string, Contract>, aliases: Map<string, { path: string; name: string }>): { path: string; name: string; resolved: boolean }[] {
+  if (access.resolvedContracts?.length) return access.resolvedContracts.map((ref) => ({ ...ref, resolved: true }));
   const refs: { path: string; name: string; resolved: boolean }[] = [];
   for (const name of access.contractNames) {
     const imported = module.imports.find((candidate) => candidate.local === name);
@@ -50,12 +52,82 @@ function refsForProperty(module: ParsedModule, access: PropertyAccess, paths: Se
   return refs;
 }
 
+function semanticPropertyRefs(inputs: SourceInput[]): Map<string, { path: string; name: string }[]> {
+  const cacheKey = inputs.map((input) => `${input.path}\0${input.source}`).join("\0");
+  const cached = semanticCache.get(cacheKey);
+  if (cached) return cached;
+  const virtualRoot = path.resolve("/.loom-virtual-analysis");
+  const fileNames = new Map(inputs.map((input) => [path.resolve(virtualRoot, input.path), input]));
+  const compilerOptions: ts.CompilerOptions = {
+    allowJs: true,
+    jsx: ts.JsxEmit.ReactJSX,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    noEmit: true,
+    skipLibCheck: true,
+    target: ts.ScriptTarget.ES2022,
+    noLib: true,
+  };
+  const host = ts.createCompilerHost(compilerOptions, true);
+  const defaultGetSourceFile = host.getSourceFile.bind(host);
+  const defaultFileExists = host.fileExists.bind(host);
+  const defaultReadFile = host.readFile.bind(host);
+  host.fileExists = (fileName) => fileNames.has(path.resolve(fileName)) || defaultFileExists(fileName);
+  host.readFile = (fileName) => fileNames.get(path.resolve(fileName))?.source ?? defaultReadFile(fileName);
+  host.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
+    const input = fileNames.get(path.resolve(fileName));
+    if (input) return ts.createSourceFile(fileName, input.source, languageVersion, true, input.path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    return defaultGetSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
+  };
+  host.resolveModuleNames = (moduleNames, containingFile) => moduleNames.map((moduleName) => ts.resolveModuleName(moduleName, containingFile, compilerOptions, host).resolvedModule);
+  const program = ts.createProgram([...fileNames.keys()], compilerOptions, host);
+  const checker = program.getTypeChecker();
+  const result = new Map<string, { path: string; name: string }[]>();
+
+  function contractDeclaration(declaration: ts.Declaration): { path: string; name: string } | undefined {
+    let parent: ts.Node = declaration.parent;
+    if (ts.isTypeLiteralNode(parent)) parent = parent.parent;
+    if (!ts.isInterfaceDeclaration(parent) && !ts.isTypeAliasDeclaration(parent)) return undefined;
+    const sourceFile = parent.getSourceFile();
+    const relativePath = inputs.find((input) => path.resolve(virtualRoot, input.path) === path.resolve(sourceFile.fileName))?.path;
+    return relativePath ? { path: relativePath, name: parent.name.text } : undefined;
+  }
+
+  for (const input of inputs) {
+    const sourceFile = program.getSourceFile(path.resolve(virtualRoot, input.path));
+    if (!sourceFile) continue;
+    const module = parseSource(input);
+    for (const access of module.propertyAccesses) {
+      const target = sourceFile.getPositionOfLineAndCharacter(access.line - 1, access.column - 1);
+      let propertyNode: ts.PropertyAccessExpression | undefined;
+      const find = (node: ts.Node): void => {
+        if (node.getStart(sourceFile) === target && ts.isPropertyAccessExpression(node)) propertyNode = node;
+        if (target >= node.getStart(sourceFile) && target <= node.getEnd()) ts.forEachChild(node, find);
+      };
+      find(sourceFile);
+      if (!propertyNode) continue;
+      const property = checker.getPropertyOfType(checker.getTypeAtLocation(propertyNode.expression), propertyNode.name.text);
+      const refs = (property?.declarations ?? []).map(contractDeclaration).filter((ref): ref is { path: string; name: string } => Boolean(ref));
+      if (refs.length) result.set(`${input.path}|${access.line}|${access.column}`, refs);
+    }
+  }
+  semanticCache.set(cacheKey, result);
+  return result;
+}
+
+const semanticCache = new Map<string, Map<string, { path: string; name: string }[]>>();
+
 function frameworkNodes(frameworks: Framework[]): GraphNode[] {
   return frameworks.map((framework) => ({ id: `framework:${framework}`, kind: "framework", label: framework, framework }));
 }
 
 export function buildGraph(inputs: SourceInput[]): GraphSnapshot {
   const modules = inputs.map(parseSource).sort((a, b) => compareStrings(a.path, b.path));
+  const semanticRefs = semanticPropertyRefs(inputs);
+  for (const module of modules) for (const access of module.propertyAccesses) {
+    const refs = semanticRefs.get(`${module.path}|${access.line}|${access.column}`);
+    if (refs?.length) access.resolvedContracts = refs;
+  }
   const paths = new Set(modules.map((module) => module.path));
   const contracts = contractLookup(modules);
   const aliases = new Map<string, { path: string; name: string }>();

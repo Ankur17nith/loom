@@ -1,0 +1,12 @@
+{
+  "base": "HEAD",
+  "extensions": [".ts", ".tsx", ".js", ".jsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage", ".git"],
+  "maxFiles": 10000,
+  "maxFileBytes": 1000000,
+  "verification": {
+    "commands": [],
+    "timeoutMs": 30000,
+    "maxOutputBytes": 100000
+  }
+}

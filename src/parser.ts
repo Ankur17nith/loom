@@ -152,6 +152,7 @@ export function parseSource(input: SourceInput): ParsedModule {
   const parseErrors = diagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, " "));
   return {
     path: filePath,
+    source: input.source,
     imports: imports.sort((a, b) => compareStrings(a.source, b.source) || compareStrings(a.local, b.local) || a.line - b.line),
     contracts: contracts.sort((a, b) => compareStrings(a.name, b.name)),
     propertyAccesses: propertyAccesses.sort((a, b) => a.line - b.line || a.column - b.column || compareStrings(a.property, b.property)),

@@ -37,6 +37,7 @@ export interface PropertyAccess extends SourcePosition {
   property: string;
   text: string;
   contractNames: string[];
+  resolvedContracts?: { path: string; name: string }[];
 }
 
 export interface JsxUsage extends SourcePosition {
@@ -46,6 +47,7 @@ export interface JsxUsage extends SourcePosition {
 
 export interface ParsedModule {
   path: string;
+  source: string;
   imports: ImportRecord[];
   contracts: Contract[];
   propertyAccesses: PropertyAccess[];
@@ -132,6 +134,7 @@ export interface RepositorySummary {
 }
 
 export interface RepositoryAnalysis {
+  root: string;
   base: string;
   changedFiles: string[];
   current: GraphSnapshot;
@@ -147,6 +150,11 @@ export interface LoomConfig {
   exclude: string[];
   maxFiles: number;
   maxFileBytes: number;
+  verification: {
+    commands: string[][];
+    timeoutMs: number;
+    maxOutputBytes: number;
+  };
 }
 
 export interface AnalysisOptions {
@@ -157,11 +165,21 @@ export interface AnalysisOptions {
 
 export interface ReportDocument {
   schemaVersion: 1;
+  version: "loom.report/v1";
+  reportId: string;
+  generatedAt: string;
+  repository: {
+    name: string;
+    branch: string;
+    commit: string;
+    baseCommit: string;
+  };
   base: string;
   changedFiles: string[];
   summary: RepositorySummary;
   contractChanges: ContractChange[];
   findings: Finding[];
+  verification?: import("./verification.js").VerificationResult[];
   graph?: GraphSnapshot;
   impactedFiles?: string[];
 }

@@ -31,6 +31,7 @@ describe("repository contract analysis", () => {
     const result = scan(root);
     expect(result.findings).toHaveLength(1);
     expect(result.findings[0]).toMatchObject({ kind: "removed-field", contractPath: "src/api.ts", contract: "User", field: "name", consumer: "src/consumer.ts", confidence: "high", uncertainty: [] });
+    expect(result.findings[0]?.evidence[0]?.code).toContain("user.name");
     expect(result.findings[0]?.evidence[0]?.path).toEqual(["src/consumer.ts", "src/api.ts"]);
     expect(result.findings[0]?.id).toMatch(/^finding-[0-9a-f]{16}$/);
   });
@@ -93,7 +94,12 @@ describe("repository contract analysis", () => {
     updateRepo(root, { "src/api.ts": apiWithoutName });
     const first = jsonReport(reportDocument(scan(root)));
     const second = jsonReport(reportDocument(scan(root)));
-    expect(first).toBe(second);
+    const withoutTimestamp = (value: string) => {
+      const parsed = JSON.parse(value) as { generatedAt?: string };
+      delete parsed.generatedAt;
+      return JSON.stringify(parsed);
+    };
+    expect(withoutTimestamp(first)).toBe(withoutTimestamp(second));
     expect(first).not.toContain(path.resolve(root));
     expect(fs.existsSync(path.join(root, ".git"))).toBe(true);
   });

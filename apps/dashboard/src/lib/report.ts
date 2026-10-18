@@ -4,8 +4,8 @@ export const ReportVersion = z.literal("loom.report/v1");
 
 const Severity = z.enum(["critical", "high", "medium", "low"]);
 const FindingStatus = z.enum(["open", "reviewed", "resolved"]);
-const NodeKind = z.enum(["file", "function", "type", "test", "package"]);
-const EdgeKind = z.enum(["imports", "calls", "implements", "tested-by", "exports"]);
+const NodeKind = z.enum(["file", "module", "function", "type", "property", "route", "contract", "component", "consumer", "database-schema", "test", "package", "framework"]);
+const EdgeKind = z.enum(["imports", "exports", "declares", "contains", "uses-type", "reads-property", "returns-contract", "accepts-contract", "serves-route", "consumes-response", "defines-schema", "covered-by", "calls", "implements", "tested-by", "framework"]);
 
 export const ReportSchema = z.object({
   version: ReportVersion,
@@ -23,6 +23,13 @@ export const ReportSchema = z.object({
     highRisk: z.number().int().nonnegative(),
     verification: z.enum(["passing", "partial", "failed", "not-run"]),
   }),
+  contractChanges: z.array(z.object({
+    kind: z.string(),
+    contractPath: z.string(),
+    contract: z.string(),
+    field: z.string(),
+    previousField: z.string().optional(),
+  })).default([]),
   nodes: z.array(z.object({
     id: z.string().min(1),
     label: z.string().min(1),
@@ -82,6 +89,63 @@ export type ReportLoadResult = {
   label: string;
 };
 
+const EngineReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  version: z.literal("loom.report/v1"),
+  reportId: z.string().min(1),
+  generatedAt: z.string().datetime(),
+  repository: z.object({
+    name: z.string().min(1),
+    branch: z.string().min(1),
+    commit: z.string().min(1),
+    baseCommit: z.string().min(1),
+  }),
+  base: z.string().min(1),
+  changedFiles: z.array(z.string()),
+  summary: z.object({
+    modules: z.number().int().nonnegative(),
+    changedFiles: z.number().int().nonnegative(),
+    contractChanges: z.number().int().nonnegative(),
+    findings: z.number().int().nonnegative(),
+    high: z.number().int().nonnegative(),
+    medium: z.number().int().nonnegative(),
+    low: z.number().int().nonnegative(),
+  }),
+  contractChanges: z.array(z.object({
+    kind: z.string(),
+    contractPath: z.string(),
+    contract: z.string(),
+    field: z.string(),
+    previousField: z.string().optional(),
+    evidence: z.object({ line: z.number().int(), column: z.number().int() }),
+  })),
+  findings: z.array(z.object({
+    id: z.string(),
+    kind: z.string(),
+    severity: z.enum(["high", "medium", "low"]),
+    contractPath: z.string(),
+    contract: z.string(),
+    field: z.string(),
+    previousField: z.string().optional(),
+    consumer: z.string(),
+    message: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
+    uncertainty: z.array(z.string()),
+    evidence: z.array(z.object({
+      file: z.string(),
+      line: z.number().int(),
+      column: z.number().int(),
+      code: z.string(),
+      relation: z.string(),
+      path: z.array(z.string()),
+    })),
+  })),
+  graph: z.object({
+    nodes: z.array(z.object({ id: z.string(), kind: z.string(), label: z.string(), path: z.string().optional() })),
+    edges: z.array(z.object({ id: z.string(), from: z.string(), to: z.string(), relation: z.string(), label: z.string().optional(), evidence: z.string().optional() })),
+  }).optional(),
+});
+
 export function parseReportJson(input: unknown): LoomReport {
   return ReportSchema.parse(input);
 }
@@ -91,11 +155,71 @@ export function safeParseReportJson(input: unknown) {
 }
 
 export function reportFromJson(input: unknown): ReportLoadResult {
-  return {
-    report: parseReportJson(input),
-    source: "report-json",
-    label: "Imported report",
-  };
+  const parsed = ReportSchema.safeParse(input);
+  if (parsed.success) return { report: parsed.data, source: "report-json", label: "Imported report" };
+  const engine = EngineReportSchema.parse(input);
+  return { report: adaptEngineReport(engine), source: "report-json", label: "Loom engine report" };
+}
+
+type EngineReport = z.infer<typeof EngineReportSchema>;
+
+function engineNodeKind(kind: string): LoomReport["nodes"][number]["kind"] {
+  if (kind === "module") return "file";
+  if (kind === "contract") return "type";
+  return NodeKind.options.includes(kind as never) ? kind as LoomReport["nodes"][number]["kind"] : "file";
+}
+
+function adaptEngineReport(input: EngineReport): LoomReport {
+  const graphNodes = input.graph?.nodes ?? [];
+  const nodeIds = new Set(graphNodes.map((node) => node.id));
+  const nodes = graphNodes.map((node, index) => ({
+    id: node.id,
+    label: node.label,
+    path: node.path ?? node.label,
+    kind: engineNodeKind(node.kind),
+    changed: input.changedFiles.includes(node.path ?? ""),
+    position: { x: 80 + (index % 4) * 280, y: 80 + Math.floor(index / 4) * 150 },
+  }));
+  const edges = (input.graph?.edges ?? []).filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to)).map((edge) => ({
+    id: edge.id,
+    source: edge.from,
+    target: edge.to,
+    kind: edge.relation as LoomReport["edges"][number]["kind"],
+    evidence: edge.evidence ?? edge.label ?? edge.relation,
+  }));
+  const findings = input.findings.map((finding) => {
+    const contractId = `contract:${finding.contractPath}#${finding.contract}`;
+    const consumerId = `module:${finding.consumer}`;
+    const affectedNodeIds = [contractId, consumerId, ...finding.evidence.flatMap((evidence) => evidence.path.map((file) => `module:${file}`))].filter((id, index, values) => nodeIds.has(id) && values.indexOf(id) === index);
+    const firstEvidence = finding.evidence[0];
+    return {
+      id: finding.id,
+      title: finding.message,
+      summary: finding.uncertainty.length ? `${finding.message} ${finding.uncertainty.join(" ")}` : finding.message,
+      severity: finding.severity === "high" ? "high" as const : finding.severity === "medium" ? "medium" as const : "low" as const,
+      status: "open" as const,
+      confidence: finding.confidence === "high" ? 0.95 : finding.confidence === "medium" ? 0.65 : 0.35,
+      category: finding.kind,
+      location: { file: firstEvidence?.file ?? finding.contractPath, line: firstEvidence?.line ?? 1 },
+      evidence: finding.evidence.map((evidence) => ({ label: evidence.relation, value: evidence.code || finding.message, source: `${evidence.file}:${evidence.line}:${evidence.column}` })),
+      affectedNodeIds: affectedNodeIds.length ? affectedNodeIds : [consumerId].filter((id) => nodeIds.has(id)),
+      recommendedAction: finding.kind === "renamed-field" ? `Update ${finding.consumer} to read ${finding.field}, or preserve a compatibility alias.` : `Review ${finding.consumer} and add a focused regression check before merging.`,
+      introducedIn: input.repository.commit,
+    };
+  });
+  const checks: LoomReport["checks"] = [];
+  return ReportSchema.parse({
+    version: "loom.report/v1",
+    reportId: input.reportId,
+    generatedAt: input.generatedAt,
+    repository: input.repository,
+    summary: { filesChanged: input.summary.changedFiles, findings: input.summary.findings, highRisk: input.summary.high, verification: "not-run" },
+    contractChanges: input.contractChanges,
+    nodes,
+    edges,
+    findings,
+    checks,
+  });
 }
 
 export function formatReportDate(value: string): string {

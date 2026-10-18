@@ -11,6 +11,7 @@ export const demoReport: LoomReport = {
     baseCommit: "7aa2d9ce18b6f41",
   },
   summary: { filesChanged: 14, findings: 4, highRisk: 2, verification: "passing" },
+  contractChanges: [],
   nodes: [
     { id: "checkout-api", label: "checkout.ts", path: "src/api/checkout.ts", kind: "file", lines: "18–94", changed: true, position: { x: 80, y: 190 } },
     { id: "payment-contract", label: "PaymentRequest", path: "src/contracts/payment.ts", kind: "type", lines: "6–28", changed: true, position: { x: 350, y: 80 } },

@@ -95,3 +95,12 @@ export function gitAvailable(root: string): boolean {
     return false;
   }
 }
+
+export function currentCommit(root: string): string {
+  return git(root, ["rev-parse", "HEAD"]).trim();
+}
+
+export function currentBranch(root: string): string {
+  const branch = git(root, ["branch", "--show-current"]).trim();
+  return branch || "HEAD";
+}

@@ -35,7 +35,7 @@ describe("CLI vertical slice", () => {
     expect(stdout).toContain('"ok": true');
     stdout = "";
     expect(await runCli(["init", "--root", root], io)).toBe(0);
-    expect(stdout).toContain("Created loom.config.json");
+    expect(stdout).toContain("Created .loom/config.json");
     stdout = "";
     expect(await runCli(["ci", "--root", root, "--base", "HEAD"], io)).toBe(1);
     expect(stderr).toContain("CI found findings");

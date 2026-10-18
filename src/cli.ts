@@ -12,6 +12,7 @@ import { reverseImportReachability } from "./graph.js";
 import { graphText, explainText, jsonReport, reportDocument, textReport } from "./report.js";
 import type { Finding, LoomConfig, ReportDocument } from "./types.js";
 import { pathIsInside, stableJson } from "./utils.js";
+import { runApprovedChecks } from "./verification.js";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version: string };
@@ -104,15 +105,32 @@ function addScanCommand(program: Command): void {
 }
 
 function addImpactCommand(program: Command): void {
-  const command = addRepositoryOptions(program.command("impact").description("Show files transitively impacted by changed modules"));
-  command.action(() => {
+  const command = addRepositoryOptions(program.command("impact [identifier]").description("Show files transitively impacted by a changed file or symbol"));
+  command.action((identifier?: string) => {
     const result = analyzeForCommand(command);
-    const impacted = new Set(result.analysis.changedFiles);
-    for (const changed of result.analysis.changedFiles) for (const file of reverseImportReachability(result.analysis.current, changed).keys()) impacted.add(file);
+    const targets = identifier ? resolveImpactTargets(result.analysis.current, identifier) : result.analysis.changedFiles;
+    if (identifier && targets.length === 0) throw new CliFailure(2, `Impact identifier ${identifier} was not found`);
+    if (identifier && targets.length > 1) throw new CliFailure(2, `Impact identifier ${identifier} is ambiguous: ${targets.join(", ")}`);
+    const impacted = new Set(targets);
+    for (const changed of targets) for (const file of reverseImportReachability(result.analysis.current, changed).keys()) impacted.add(file);
     const text = render(reportDocument(result.analysis, { impactedFiles: [...impacted] }), result.options.format);
     writeResult(result.root, result.options.output, text);
     if (!result.options.output) output({}, text);
   });
+}
+
+function resolveImpactTargets(graph: ReturnType<typeof analyzeForCommand>["analysis"]["current"], identifier: string): string[] {
+  const normalized = identifier.replace(/^module:/, "");
+  const exactModule = graph.modules.filter((module) => module.path === normalized).map((module) => module.path);
+  if (exactModule.length) return exactModule;
+  const contractMatches = graph.nodes.filter((node) => node.kind === "contract" && (node.label === identifier || node.id === identifier || node.id.endsWith(`#${identifier}`))).map((node) => node.path).filter((value): value is string => Boolean(value));
+  if (contractMatches.length) return [...new Set(contractMatches)];
+  const propertyContract = identifier.match(/^(.+?)\.([^./]+)$/);
+  if (propertyContract) {
+    const contract = graph.nodes.find((node) => node.kind === "contract" && (node.label === propertyContract[1] || node.id.endsWith(`#${propertyContract[1]}`)));
+    if (contract?.path) return [contract.path];
+  }
+  return [];
 }
 
 function addGraphCommand(program: Command): void {
@@ -163,6 +181,28 @@ function addCiCommand(program: Command): void {
   });
 }
 
+function addTestCommand(program: Command): void {
+  const command = addRepositoryOptions(program.command("test").description("Run only explicitly configured verification commands"));
+  command.option("--run", "authorize execution of the configured command arrays");
+  command.action(async () => {
+    const options = commandOptions(command);
+    const repository = loadRepositoryConfig(options);
+    const commandConfig = command.opts() as { run?: boolean };
+    if (!commandConfig.run) {
+      const configured = repository.config.verification.commands;
+      const text = options.format === "json" ? `${stableJson({ schemaVersion: 1, status: "not-run", commands: configured })}\n` : `Configured verification commands: ${configured.length}\nPass --run to execute approved command arrays.\n`;
+      writeResult(repository.root, options.output, text);
+      if (!options.output) output({}, text);
+      return;
+    }
+    const results = await runApprovedChecks(repository.root, repository.config);
+    const text = options.format === "json" ? `${stableJson({ schemaVersion: 1, results })}\n` : results.map((result) => `[${result.status.toUpperCase()}] ${result.command.join(" ")} (${result.durationMs}ms)${result.reason ? ` — ${result.reason}` : ""}`).join("\n") + (results.length ? "\n" : "No configured checks.\n");
+    writeResult(repository.root, options.output, text);
+    if (!options.output) output({}, text);
+    if (results.some((result) => result.status !== "passed")) throw new CliFailure(1, "Verification did not pass all configured checks");
+  });
+}
+
 function addDoctorCommand(program: Command): void {
   const command = addRepositoryOptions(program.command("doctor").description("Check Loom prerequisites without running project scripts"));
   command.action(() => {
@@ -191,7 +231,7 @@ function addInitCommand(program: Command): void {
     try {
       const root = repositoryRoot(path.resolve(options.root ?? process.cwd()));
       const file = initConfig(root, options.force === true);
-      output({}, `Created ${file}\n`);
+    output({}, `Created ${file}\n`);
     } catch (error) {
       throw new CliFailure(2, error instanceof Error ? error.message : String(error));
     }
@@ -208,6 +248,7 @@ function createProgram(io: CliIo): Command {
   addExplainCommand(program);
   addDoctorCommand(program);
   addCiCommand(program);
+  addTestCommand(program);
   addInitCommand(program);
   return program;
 }

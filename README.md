@@ -11,6 +11,25 @@ contracts.
 The optional dashboard is a presentation layer over real Loom reports; it does
 not invent findings.
 
+## Dashboard
+
+The dashboard combines a compact dark developer-tool shell, evidence-first
+finding detail, and a React Flow impact graph. It loads a validated report from
+`VITE_LOOM_REPORT_URL` when that variable is set. Without a URL it uses an
+explicitly labeled synthetic fixture so the UI can be previewed without a
+repository; demo data is never presented as engine output.
+
+```bash
+npm run dev --workspace apps/dashboard
+VITE_LOOM_REPORT_URL=/reports/report.json npm run dev --workspace apps/dashboard
+```
+
+It supports overview, graph, findings, finding details, verification artifact
+review, report download, settings, keyboard command navigation, and an
+accessible relationship-list alternative to the graph. The dashboard does not
+execute repository commands, persist report history, authenticate users, or
+apply patches.
+
 ## Core engine status
 
 The core engine and CLI are usable as a vertical slice. It currently supports:
@@ -45,7 +64,7 @@ npm run build
 node dist/cli.js --help
 ```
 
-`npm test` runs TypeScript checks for the CLI and dashboard plus the unit,
+`make test` is the canonical offline check. It runs TypeScript checks for the CLI and dashboard plus the unit,
 integration, and end-to-end tests. The tests create temporary Git repositories
 and do not execute scripts from those repositories.
 
@@ -53,7 +72,7 @@ and do not execute scripts from those repositories.
 
 All analysis commands use the current directory by default. `--root` selects a
 repository and `--base` selects a Git commit; the default base is `HEAD` (or the
-`base` value in `loom.config.json`). Output paths and all report paths must be
+`base` value in `.loom/config.json`). Output paths and all report paths must be
 repository-relative.
 
 ```bash
@@ -64,6 +83,8 @@ node dist/cli.js graph --format json
 node dist/cli.js report --format json --output .loom/reports/report.json
 node dist/cli.js explain finding-0123456789abcdef
 node dist/cli.js doctor
+node dist/cli.js test
+node dist/cli.js test --run
 node dist/cli.js ci --fail-on high
 ```
 
@@ -75,6 +96,9 @@ transitively import changed modules. `graph` prints the current deterministic
 graph. `report` includes that graph in the report document. `explain` resolves
 one finding ID. `doctor` checks Git/configuration without invoking project
 scripts. `ci` prints a report and exits non-zero when its threshold is met.
+
+`report --format json` emits versioned `loom.report/v1` JSON with repository and
+base metadata. The dashboard adapter accepts this engine report directly.
 
 ### Exit codes
 
@@ -92,7 +116,7 @@ requested operation succeeds, even when findings are present.
 
 ## Configuration
 
-`loom init` creates `loom.config.json`:
+`loom init` creates `.loom/config.json`:
 
 ```json
 {
@@ -100,7 +124,12 @@ requested operation succeeds, even when findings are present.
   "extensions": [".ts", ".tsx", ".js", ".jsx"],
   "exclude": ["node_modules", "dist", "build", "coverage", ".git"],
   "maxFiles": 10000,
-  "maxFileBytes": 1000000
+  "maxFileBytes": 1000000,
+  "verification": {
+    "commands": [],
+    "timeoutMs": 30000,
+    "maxOutputBytes": 100000
+  }
 }
 ```
 
@@ -117,7 +146,7 @@ are graph signals only; the engine does not claim framework-specific routing,
 component lifecycle, or runtime behavior analysis.
 
 The analyzer is intentionally conservative and syntax-oriented. It does not
-run TypeScript, resolve npm packages, infer arbitrary JavaScript types, model
+resolve npm packages or aliases, infer arbitrary JavaScript types, model
 reflection/dynamic property names, or execute tests/builds. Strong findings
 come from explicit imported contract types and property accesses. A reachable
 but unresolved transitive property access is reported with medium confidence
@@ -132,6 +161,35 @@ package graphs are outside this slice.
 - Evidence and uncertainty are visible in every finding.
 - Repository contents and commands are handled conservatively.
 - No database server is required for core analysis.
+
+## Docker
+
+```bash
+docker build -t loom .
+docker run --rm -v "$PWD:/repo:ro" -w /repo loom doctor
+docker run --rm -v "$PWD:/repo:ro" -w /repo loom scan --base HEAD --format json
+```
+
+The container runs the CLI as a non-root user. Git ownership and repository
+access remain the caller's responsibility; do not disable Git safety checks
+globally.
+
+## CI
+
+The repository workflow runs `npm ci`, `make test`, and `npm run build` on a
+clean Ubuntu runner. A downstream project can install the package and run
+`loom ci --base "$GITHUB_BASE_REF" --format json`; missing bases and incomplete
+analysis should be treated as failures rather than a clean scan.
+
+## Roadmap and honest limitations
+
+The current release focuses on the TypeScript contract-impact vertical slice.
+Express and React are represented through parser and graph signals; full route
+serializer inference, Mongoose/OpenAPI adapters, migration planning, bounded
+verification execution, incremental cache persistence, AI investigation, and
+historical dashboard reports remain follow-up work. These capabilities must
+consume the same evidence-backed report contract rather than inventing a
+second analysis engine.
 
 ## License
 

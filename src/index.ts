@@ -6,3 +6,4 @@ export * from "./graph.js";
 export * from "./parser.js";
 export * from "./report.js";
 export * from "./types.js";
+export * from "./verification.js";

@@ -1,14 +1,27 @@
 import type { Finding, GraphSnapshot, ReportDocument, RepositoryAnalysis } from "./types.js";
-import { stableJson, uniqueSorted } from "./utils.js";
+import { currentBranch, currentCommit } from "./git.js";
+import { stableId, stableJson, uniqueSorted } from "./utils.js";
 
-export function reportDocument(analysis: RepositoryAnalysis, options: { graph?: GraphSnapshot; impactedFiles?: string[] } = {}): ReportDocument {
+export function reportDocument(analysis: RepositoryAnalysis, options: { graph?: GraphSnapshot; impactedFiles?: string[]; verification?: ReportDocument["verification"] } = {}): ReportDocument {
+  const generatedAt = new Date().toISOString();
+  const commit = currentCommit(analysis.root);
   return {
     schemaVersion: 1,
+    version: "loom.report/v1",
+    reportId: stableId("report", `${commit}|${analysis.base}|${analysis.changedFiles.join("|")}`),
+    generatedAt,
+    repository: {
+      name: analysis.root.split(/[\\/]/).at(-1) ?? "repository",
+      branch: currentBranch(analysis.root),
+      commit,
+      baseCommit: analysis.base,
+    },
     base: analysis.base,
     changedFiles: [...analysis.changedFiles],
     summary: analysis.summary,
     contractChanges: [...analysis.contractChanges],
     findings: [...analysis.findings],
+    ...(options.verification ? { verification: options.verification } : {}),
     ...(options.graph ? { graph: options.graph } : {}),
     ...(options.impactedFiles ? { impactedFiles: uniqueSorted(options.impactedFiles) } : {}),
   };

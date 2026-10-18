@@ -52,8 +52,7 @@ function compareContracts(baseline: GraphSnapshot, current: GraphSnapshot): Cont
 }
 
 function moduleSource(graph: GraphSnapshot, filePath: string): string {
-  const module = graph.modules.find((candidate) => candidate.path === filePath);
-  return module ? "" : "";
+  return graph.modules.find((candidate) => candidate.path === filePath)?.source ?? "";
 }
 
 function findCurrentUsage(graph: GraphSnapshot, consumer: string, change: ContractChange): { usage: UsageEvidence; uncertain: boolean } | undefined {
@@ -142,7 +141,7 @@ function summary(analysis: Omit<RepositoryAnalysis, "summary">): RepositoryAnaly
 
 export function analyzeRepository(options: AnalysisOptions): RepositoryAnalysis {
   const root = repositoryRoot(options.root);
-  const config = options.config ?? { extensions: [".ts", ".tsx", ".js", ".jsx"], exclude: ["node_modules", "dist", "build", "coverage", ".git"], maxFiles: 10_000, maxFileBytes: 1_000_000 };
+  const config = options.config ?? { extensions: [".ts", ".tsx", ".js", ".jsx"], exclude: ["node_modules", "dist", "build", "coverage", ".git"], maxFiles: 10_000, maxFileBytes: 1_000_000, verification: { commands: [], timeoutMs: 30_000, maxOutputBytes: 100_000 } };
   const base = resolveBase(root, options.base ?? config.base);
   const currentInputs = inputsForCurrent(root, config);
   const baselineInputs = inputsForBase(root, base, config);
@@ -151,6 +150,6 @@ export function analyzeRepository(options: AnalysisOptions): RepositoryAnalysis 
   const baseline = buildGraph(baselineInputs);
   const contractChanges = compareContracts(baseline, current);
   const findings = detectFindings(contractChanges, baseline, current);
-  const partial: Omit<RepositoryAnalysis, "summary"> = { base, changedFiles: changedFiles(root, base, config), current, baseline, contractChanges, findings };
+  const partial: Omit<RepositoryAnalysis, "summary"> = { root, base, changedFiles: changedFiles(root, base, config), current, baseline, contractChanges, findings };
   return { ...partial, summary: summary(partial) };
 }
