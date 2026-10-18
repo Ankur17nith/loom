@@ -204,7 +204,9 @@ function engineNodeKind(kind: string): LoomReport["nodes"][number]["kind"] {
 
 function adaptEngineReport(input: EngineReport): LoomReport {
   const graphNodes = input.graph?.nodes ?? [];
+  const graphEdges = input.graph?.edges ?? [];
   const nodeIds = new Set(graphNodes.map((node) => node.id));
+
   const nodes = graphNodes.map((node, index) => ({
     id: node.id,
     label: node.label,
@@ -213,17 +215,18 @@ function adaptEngineReport(input: EngineReport): LoomReport {
     changed: input.changedFiles.includes(node.path ?? ""),
     position: { x: 80 + (index % 4) * 280, y: 80 + Math.floor(index / 4) * 150 },
   }));
-  const edges = (input.graph?.edges ?? []).filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to)).map((edge) => ({
+  const edges = graphEdges.filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to)).map((edge) => ({
     id: edge.id,
     source: edge.from,
     target: edge.to,
-    kind: edge.relation as LoomReport["edges"][number]["kind"],
+    kind: (NodeKind.options.includes(edge.relation as never) || EdgeKind.options.includes(edge.relation as never) ? edge.relation : "uses-type") as LoomReport["edges"][number]["kind"],
     evidence: edge.evidence ?? edge.label ?? edge.relation,
   }));
   const findings = input.findings.map((finding) => {
     const contractId = `contract:${finding.contractPath}#${finding.contract}`;
     const consumerId = `module:${finding.consumer}`;
-    const affectedNodeIds = [contractId, consumerId, ...finding.evidence.flatMap((evidence) => evidence.path.map((file) => `module:${file}`))].filter((id, index, values) => nodeIds.has(id) && values.indexOf(id) === index);
+    const directAffected = [contractId, consumerId, ...finding.evidence.flatMap((evidence) => evidence.path.map((file) => `module:${file}`))];
+    const affectedNodeIds = directAffected.filter((id, index, values) => (nodeIds.size === 0 || nodeIds.has(id)) && values.indexOf(id) === index);
     const firstEvidence = finding.evidence[0];
     return {
       id: finding.id,
@@ -245,7 +248,7 @@ function adaptEngineReport(input: EngineReport): LoomReport {
         relation: evidence.relation,
         path: evidence.path,
       })),
-      affectedNodeIds: affectedNodeIds.length ? affectedNodeIds : [consumerId].filter((id) => nodeIds.has(id)),
+      affectedNodeIds: affectedNodeIds.length ? affectedNodeIds : [consumerId, contractId],
       recommendedAction: finding.kind === "renamed-field" ? `Update ${finding.consumer} to read ${finding.field}, or preserve a compatibility alias.` : `Review ${finding.consumer} and add a focused regression check before merging.`,
       introducedIn: input.repository.commit,
       uncertainty: finding.uncertainty,

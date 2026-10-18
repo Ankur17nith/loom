@@ -45,8 +45,17 @@ export function OverviewPage({ report }: { report: LoomReport }) {
     <section className="hero-break-card" aria-label="Priority review">
       <div className="hero-break-header">
         <div className="hero-break-tag">
-          <ShieldAlert size={15} aria-hidden="true" />
-          <span>PRIORITY CONTRACT BREAKAGE</span>
+          {primary ? (
+            <>
+              <ShieldAlert size={15} aria-hidden="true" />
+              <span>PRIORITY CONTRACT BREAKAGE</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={15} aria-hidden="true" style={{ color: "var(--fl-proof)" }} />
+              <span>NO BREAKAGE DETECTED</span>
+            </>
+          )}
         </div>
         <div className={cn("verification-gate-pill", stats.verification === "passing" ? "passing" : stats.verification === "failed" ? "failing" : "partial")}>
           {stats.verification === "passing" ? <CheckCircle2 size={13} aria-hidden="true" /> : <ShieldAlert size={13} aria-hidden="true" />}
@@ -54,10 +63,10 @@ export function OverviewPage({ report }: { report: LoomReport }) {
         </div>
       </div>
       <h2 className="hero-break-title">
-        {primary ? primary.title : "No findings need review"}
+        {primary ? primary.title : "All contract consumers are compatible"}
       </h2>
       <p className="hero-break-desc">
-        {primary ? primary.summary : "The current report has no contract breakage findings. Review the report artifact for provenance and attached checks."}
+        {primary ? primary.summary : "No breaking contract changes or stale consumers were detected between the base commit and working tree."}
       </p>
       <div className="hero-break-meta">
         {primary && <>
@@ -66,7 +75,7 @@ export function OverviewPage({ report }: { report: LoomReport }) {
           <span>Rule: <code>{primary.category}</code></span>
           <span>Location: <code>{primary.location.file}:{primary.location.line}</code></span>
         </>}
-        {!primary && <span>Clean baseline snapshot</span>}
+        {!primary && <span>Clean baseline snapshot · {stats.filesChanged} file{stats.filesChanged === 1 ? "" : "s"} inspected</span>}
       </div>
       {primary && <div className="hero-actions" style={{ marginTop: 6 }}>
         <Button variant="primary" onClick={() => navigate(`/findings/${primary.id}`)}>
@@ -92,15 +101,15 @@ export function OverviewPage({ report }: { report: LoomReport }) {
       </div>
       <div className="metric-box">
         <span className="metric-label">Verification Gate</span>
-        <span className={cn("metric-val", stats.verification === "passing" ? "text-green" : stats.verification === "failed" ? "text-red" : "text-iris")}>
-          {stats.checksTotal ? `${Math.round((stats.checksPassed / stats.checksTotal) * 100)}%` : "100%"}
+        <span className={cn("metric-val", stats.checksTotal === 0 ? "text-iris" : stats.verification === "passing" ? "text-green" : stats.verification === "failed" ? "text-red" : "text-iris")}>
+          {stats.checksTotal ? `${Math.round((stats.checksPassed / stats.checksTotal) * 100)}%` : "Not run"}
         </span>
-        <span className="metric-sub">{stats.checksPassed}/{stats.checksTotal} checks passed</span>
+        <span className="metric-sub">{stats.checksTotal ? `${stats.checksPassed}/${stats.checksTotal} checks passed` : "0 checks recorded"}</span>
       </div>
       <div className="metric-box">
         <span className="metric-label">Confidence</span>
-        <span className="metric-val text-iris">{formatConfidence(averageConfidence(report))}</span>
-        <span className="metric-sub">Resolved compiler bindings</span>
+        <span className="metric-val text-iris">{stats.findings > 0 ? formatConfidence(averageConfidence(report)) : "100%"}</span>
+        <span className="metric-sub">{stats.findings > 0 ? "Resolved compiler bindings" : "Deterministic graph check"}</span>
       </div>
     </section>
 
