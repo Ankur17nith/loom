@@ -17,10 +17,11 @@ The dashboard combines a compact dark developer-tool shell, evidence-first
 finding detail, and a React Flow impact graph. It is local-first and connects
 directly to authentic Loom reports produced by the CLI:
 
-1. **Direct file upload**: Drag and drop any `.loom/reports/report.json` file directly into the dashboard or click "Select from disk".
-2. **Local dev server**: Vite serves `.loom/reports/report.json` automatically at `/reports/report.json`.
-3. **Environment or URL**: Set `VITE_LOOM_REPORT_URL=/reports/report.json` or pass `?report=/reports/report.json`.
-4. **Explicit demo preview**: Demo mode is never loaded silently. When no report is configured, an honest connect screen is shown. Demo mode can be explicitly activated via `?demo=true` or by clicking "Launch demo fixture".
+1. **Direct file upload**: Drag and drop any `.loom/reports/report.json` file directly into the dashboard or click "Select from disk". Web browsers cannot directly read arbitrary local filesystem paths via `fetch()`; selecting the file explicitly provides secure in-memory browser access.
+2. **Local dev server**: Vite serves `.loom/reports/report.json` automatically at `/reports/report.json` and detects the workspace via `/api/workspace`.
+3. **Environment or URL**: Set `VITE_LOOM_REPORT_URL=/reports/report.json` or pass `?report=/reports/report.json`. Configure custom workspace roots or report paths for the dev server using `LOOM_WORKSPACE_ROOT=/path/to/repo` and `LOOM_REPORT_FILE=.loom/reports/custom.json`.
+4. **Provenance & Foreign Repository Visibility**: The dashboard actively compares the report repository against the local workspace name. If an imported report originates from a different repository, an amber provenance banner clearly alerts the user that external findings are being inspected.
+5. **Explicit demo preview**: Demo mode is never loaded silently. When no report is configured, an honest connect screen is shown. Demo mode can be explicitly activated via `?demo=true` or by clicking "Launch demo fixture".
 
 ```bash
 # In your repository, generate a complete report with graph:
@@ -29,8 +30,8 @@ node dist/cli.js report --format json --output .loom/reports/report.json
 # Launch the dashboard:
 npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
 
-# Or launch with report pre-configured:
-VITE_LOOM_REPORT_URL=/reports/report.json npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
+# Or launch targeting a specific workspace and report:
+LOOM_WORKSPACE_ROOT=/path/to/repo VITE_LOOM_REPORT_URL=/reports/report.json npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
 ```
 
 It supports overview, graph, findings, finding details, verification artifact
