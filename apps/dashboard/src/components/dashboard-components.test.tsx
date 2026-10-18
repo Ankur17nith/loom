@@ -104,4 +104,40 @@ describe("dashboard components", () => {
     expect(brandMark).toBeInTheDocument();
     expect(brandMark?.querySelector('path[fill="#889CFF"]')).toBeInTheDocument();
   });
+
+  it("renders clean state when report has 0 findings and 0 checks", () => {
+    resetStore();
+    const cleanReport = {
+      ...demoReport,
+      reportId: "clean-report-1",
+      summary: { filesChanged: 0, findings: 0, highRisk: 0, verification: "not-run" as const },
+      contractChanges: [],
+      findings: [],
+      checks: [],
+    };
+    render(<MemoryRouter initialEntries={["/"]}><OverviewPage report={cleanReport} /></MemoryRouter>);
+    expect(screen.getByText("NO BREAKAGE DETECTED")).toBeInTheDocument();
+    expect(screen.getByText("All contract consumers are compatible")).toBeInTheDocument();
+    expect(screen.getByText("0 checks recorded")).toBeInTheDocument();
+    expect(screen.getByText("Queue is clear")).toBeInTheDocument();
+  });
+
+  it("renders demo mode banner when isDemo is true and allows exiting", () => {
+    resetStore();
+    let exited = false;
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppLayout
+          report={demoReport}
+          sourceLabel="Demo fixture · labeled"
+          isDemo={true}
+          onUnloadReport={() => { exited = true; }}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByLabelText("Demo mode notice")).toBeInTheDocument();
+    expect(screen.getByText(/Viewing synthetic contract-breakage fixture/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Exit demo \/ Load real report/ }));
+    expect(exited).toBe(true);
+  });
 });
