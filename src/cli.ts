@@ -11,7 +11,7 @@ import { GitError, gitAvailable, repositoryRoot } from "./git.js";
 import { reverseImportReachability } from "./graph.js";
 import { graphText, explainText, jsonReport, reportDocument, textReport } from "./report.js";
 import type { Finding, LoomConfig, ReportDocument } from "./types.js";
-import { pathIsInside } from "./utils.js";
+import { pathIsInside, stableJson } from "./utils.js";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version: string };
@@ -118,7 +118,7 @@ function addGraphCommand(program: Command): void {
   const command = addRepositoryOptions(program.command("graph").description("Print the deterministic current-repository graph"));
   command.action(() => {
     const result = analyzeForCommand(command);
-    const text = result.options.format === "json" ? `${JSON.stringify({ schemaVersion: 1, graph: result.analysis.current }, null, 2)}\n` : graphText(result.analysis.current);
+    const text = result.options.format === "json" ? `${stableJson({ schemaVersion: 1, graph: result.analysis.current })}\n` : graphText(result.analysis.current);
     writeResult(result.root, result.options.output, text);
     if (!result.options.output) output({}, text);
   });

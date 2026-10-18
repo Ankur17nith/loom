@@ -17,7 +17,7 @@ describe("TypeScript compiler parser", () => {
     });
     expect(module.contracts[0]).toMatchObject({ name: "Props", exported: true });
     expect(module.contracts[0]?.fields[0]).toMatchObject({ name: "title", optional: true, type: "string" });
-    expect(module.imports.map((item) => item.local)).toEqual(["User", "Card", "React"]);
+    expect(module.imports.map((item) => item.local)).toEqual(["Card", "User", "React"]);
     expect(module.propertyAccesses.some((item) => item.property === "name" && item.contractNames.includes("User"))).toBe(true);
     expect(module.jsxUsages).toEqual([{ tag: "Card", props: ["title"], line: 6, column: 10 }]);
     expect(module.frameworks).toEqual(["react"]);

@@ -2,7 +2,7 @@ import type { SourceInput } from "./parser.js";
 import { buildGraph, reverseImportReachability } from "./graph.js";
 import { changedFiles, listBaseSourceFiles, listCurrentSourceFiles, readBaseFile, readCurrentFile, repositoryRoot, resolveBase } from "./git.js";
 import type { AnalysisOptions, Contract, ContractChange, Finding, FindingEvidence, GraphSnapshot, LoomConfig, ParsedModule, RepositoryAnalysis, Severity, UsageEvidence } from "./types.js";
-import { lineText, stableId, uniqueSorted } from "./utils.js";
+import { compareStrings, lineText, stableId, uniqueSorted } from "./utils.js";
 
 function inputsForCurrent(root: string, config: LoomConfig): SourceInput[] {
   return listCurrentSourceFiles(root, config).map((filePath) => ({ path: filePath, source: readCurrentFile(root, filePath, config.maxFileBytes) }));
@@ -48,7 +48,7 @@ function compareContracts(baseline: GraphSnapshot, current: GraphSnapshot): Cont
       changes.push({ kind: field.optional ? "added-optional-field" : "added-required-field", contractPath: oldValue.module.path, contract: oldValue.contract.name, field: field.name, type: field.type, optional: field.optional, evidence: { line: field.line, column: field.column } });
     }
   }
-  return changes.sort((a, b) => `${a.contractPath}#${a.contract}|${a.kind}|${a.field}|${a.previousField ?? ""}`.localeCompare(`${b.contractPath}#${b.contract}|${b.kind}|${b.field}|${b.previousField ?? ""}`));
+  return changes.sort((a, b) => compareStrings(`${a.contractPath}#${a.contract}|${a.kind}|${a.field}|${a.previousField ?? ""}`, `${b.contractPath}#${b.contract}|${b.kind}|${b.field}|${b.previousField ?? ""}`));
 }
 
 function moduleSource(graph: GraphSnapshot, filePath: string): string {
@@ -108,7 +108,7 @@ function detectFindings(changes: ContractChange[], baseline: GraphSnapshot, curr
       }
     }
   }
-  return [...new Map(findings.map((finding) => [finding.id, finding])).values()].sort((a, b) => a.id.localeCompare(b.id));
+  return [...new Map(findings.map((finding) => [finding.id, finding])).values()].sort((a, b) => compareStrings(a.id, b.id));
 }
 
 function summary(analysis: Omit<RepositoryAnalysis, "summary">): RepositoryAnalysis["summary"] {

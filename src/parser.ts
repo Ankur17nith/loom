@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-import { normalizeRepoPath, uniqueSorted } from "./utils.js";
+import { compareStrings, normalizeRepoPath, uniqueSorted } from "./utils.js";
 import type { Contract, ContractField, Framework, ImportRecord, JsxUsage, ParsedModule, PropertyAccess, SourcePosition } from "./types.js";
 
 export interface SourceInput {
@@ -41,7 +41,7 @@ function fieldsFromMembers(members: ts.NodeArray<ts.TypeElement>, sourceFile: ts
       ...pos,
     });
   }
-  return fields.sort((a, b) => a.name.localeCompare(b.name));
+  return fields.sort((a, b) => compareStrings(a.name, b.name));
 }
 
 function typeNames(type: ts.TypeNode | undefined, sourceFile: ts.SourceFile): string[] {
@@ -152,10 +152,10 @@ export function parseSource(input: SourceInput): ParsedModule {
   const parseErrors = diagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, " "));
   return {
     path: filePath,
-    imports: imports.sort((a, b) => a.source.localeCompare(b.source) || a.local.localeCompare(b.local) || a.line - b.line),
-    contracts: contracts.sort((a, b) => a.name.localeCompare(b.name)),
-    propertyAccesses: propertyAccesses.sort((a, b) => a.line - b.line || a.column - b.column || a.property.localeCompare(b.property)),
-    jsxUsages: jsxUsages.sort((a, b) => a.line - b.line || a.column - b.column || a.tag.localeCompare(b.tag)),
+    imports: imports.sort((a, b) => compareStrings(a.source, b.source) || compareStrings(a.local, b.local) || a.line - b.line),
+    contracts: contracts.sort((a, b) => compareStrings(a.name, b.name)),
+    propertyAccesses: propertyAccesses.sort((a, b) => a.line - b.line || a.column - b.column || compareStrings(a.property, b.property)),
+    jsxUsages: jsxUsages.sort((a, b) => a.line - b.line || a.column - b.column || compareStrings(a.tag, b.tag)),
     frameworks: [...frameworks].sort(),
     parseErrors: parseErrors.sort(),
   };

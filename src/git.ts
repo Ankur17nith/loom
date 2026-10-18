@@ -23,6 +23,7 @@ export function repositoryRoot(cwd: string): string {
 
 export function resolveBase(root: string, requested?: string): string {
   const base = requested ?? "HEAD";
+  if (!base || base.length > 200 || base.startsWith("-") || base.includes("\0")) throw new GitError("Base must be a bounded Git revision name");
   try {
     return git(root, ["rev-parse", "--verify", `${base}^{commit}`]).trim();
   } catch {
@@ -58,7 +59,7 @@ export function listCurrentSourceFiles(root: string, config: LoomConfig): string
     const pathValue = value.includes(" -> ") ? value.split(" -> ").at(-1) ?? value : value;
     untracked.push(pathValue);
   }
-  return uniqueSorted([...tracked, ...untracked].filter((value) => validRepoPath(root, value) && sourcePath(value, config) && !excluded(value, config)));
+  return uniqueSorted([...tracked, ...untracked].filter((value) => validRepoPath(root, value) && fs.existsSync(path.resolve(root, value)) && sourcePath(value, config) && !excluded(value, config)));
 }
 
 export function listBaseSourceFiles(root: string, base: string, config: LoomConfig): string[] {
