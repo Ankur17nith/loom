@@ -10,3 +10,5 @@ coverage/
 .agents/
 apps/dashboard/dist/
 *.log
+artifacts/demo-video/*.mp4
+artifacts/demo-video/*.wav
