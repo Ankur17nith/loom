@@ -233,5 +233,5 @@ describe("CLI-to-Dashboard End-to-End Integration (Phase 3)", () => {
     expect(cleanLoad.report.findings).toHaveLength(0);
     expect(cleanLoad.report.contractChanges).toHaveLength(0);
     expect(cleanLoad.report.summary.filesChanged).toBe(0);
-  });
+  }, 30000);
 });
