@@ -4,26 +4,33 @@ This directory contains the production product demonstration for **Loom**, an op
 
 ## Artifacts in this Directory
 
-- **`loom-demo.mp4`**: High-definition video demonstration (1920x1080 16:9, 30 fps, H.264 video, AAC audio, embedded subtitle stream, 2m 45s).
+- **`loom-demo.mp4`**: Final production video with **burned-in synchronized subtitles** (1920x1080 16:9, 30 fps, H.264 video via `libopenh264`, AAC audio, 2m 45s).
+- **`loom-demo-clean.mp4`**: Clean production video without burned-in captions, providing the clean video stream, AAC audio, and embedded soft `mov_text` subtitle track.
+- **`captions.srt`**: SubRip format subtitles with accurate sentence-level timestamps synchronized with speech.
+- **`captions.vtt`**: WebVTT format subtitles for HTML5 video web playback.
+- **`narration.wav`**: Mastered narration audio track (44.1 kHz, stereo, EBU R128 normalized to -16.2 LUFS and -1.0 dBTP true peak).
 - **`script.md`**: Complete 11-scene walkthrough script with scene breakdown and timecodes.
-- **`captions.srt`**: Synchronized subtitle track aligned with the voice narration.
-- **`narration.wav`**: Mastered narration audio track (44.1 kHz, stereo, EQ filtered and leveled).
 - **`README.md`**: This guide describing the demonstration and reproduction instructions.
+- **`backup_original/`**: Preserved backup of original initial demo media assets.
 
 ---
 
-## Video Specifications
+## Video & Audio Specifications
 
 | Metric | Specification |
 | :--- | :--- |
 | **Duration** | 2 minutes 45 seconds (165.0 seconds) |
 | **Resolution** | 1920 x 1080 (1080p Full HD) |
 | **Aspect Ratio** | 16:9 widescreen |
-| **Frame Rate** | 30.0 fps |
-| **Video Codec** | H.264 / AVC (`avc1.42c028`) |
-| **Audio Codec** | AAC-LC (`mp4a.40.2`), 44.1 kHz, 176 kb/s, stereo |
-| **Subtitles** | Embedded MOV text stream (`tx3g`) + standalone `captions.srt` |
-| **File Size** | ~4.8 MB |
+| **Frame Rate** | 30.0 fps progressive |
+| **Video Codec** | H.264 / AVC (`libopenh264`, `avc1.42c028`) |
+| **Audio Codec** | AAC-LC (`mp4a.40.2`), 44.1 kHz, 171–192 kb/s, stereo |
+| **Voice Profile** | `en-US-AndrewMultilingualNeural` (Warm, Confident, Authentic Engineering tone) |
+| **Integrated Loudness** | -16.2 LUFS (Target: -16 LUFS) |
+| **True Peak** | -1.0 dBTP (Target: ≤ -1.0 dBTP) |
+| **Loudness Range** | 4.2 LU |
+| **Subtitle Styling** | Liberation Sans 20pt, white `#FFFFFF`, semi-transparent dark box background `#900B0F19`, 32px bottom safe margin |
+| **File Sizes** | `loom-demo.mp4`: ~6.4 MB · `loom-demo-clean.mp4`: ~4.8 MB |
 
 ---
 
@@ -66,19 +73,13 @@ This directory contains the production product demonstration for **Loom**, an op
 
 ## Reproduction Instructions
 
-To regenerate all demo assets from scratch:
+To regenerate all audio, subtitle, and video assets:
 
 ```bash
-# 1. Build the Loom CLI and verify tests
-npm run build
-npm test
+# 1. Synthesize natural neural voice audio, compute synchronized subtitles, and render MP4s
+.venv_audio/bin/python scripts/produce_perfect_audio_and_captions.py
 
-# 2. Synthesize and master the narration audio
-node scripts/generate-demo-audio.mjs
-
-# 3. Record browser scenes and mux into final MP4
-node scripts/record-demo-video.mjs
-
-# 4. Verify output media streams
-ffprobe -v error -show_entries format=duration,size -show_streams artifacts/demo-video/loom-demo.mp4
+# 2. Verify media stream health and loudness standards
+ffprobe -v error -show_entries format=filename,duration,size -show_streams -of json artifacts/demo-video/loom-demo.mp4
+ffmpeg -i artifacts/demo-video/narration.wav -af "ebur128" -f null -
 ```

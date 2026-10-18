@@ -1,43 +1,87 @@
 1
-00:00:00,500 --> 00:00:14,500
-Welcome to Loom, an open-source, local-first developer tool for change-impact intelligence. Loom analyzes TypeScript abstract syntax trees and Git history to determine precisely what breaks before you ship.
+00:00:00,500 --> 00:00:06,870
+Welcome to Loom, an open-source, local-first developer tool for change-impact intelligence.
 
 2
-00:00:15,000 --> 00:00:29,500
-In our payment platform repository, an engineer updates the core PaymentRequest contract, removing the required currency field. Downstream services and frontend billing components still depend on this field.
+00:00:06,970 --> 00:00:14,800
+Loom analyzes TypeScript abstract syntax trees and Git history to determine precisely what breaks before you ship.
 
 3
-00:00:30,000 --> 00:00:44,500
-We run Loom's CLI using loom report. Loom's deterministic engine inspects Git diffs, parses TypeScript contracts via the compiler API, and traces consumers across imports without executing untrusted code.
+00:00:15,500 --> 00:00:23,670
+In our payment platform repository, an engineer updates the core PaymentRequest contract, removing the required currency field.
 
 4
-00:00:45,000 --> 00:00:59,500
-The generated report adheres strictly to the versioned loom.report/v1 schema, embedding stable finding IDs, syntax evidence, confidence scores, and dependency edges. No synthetic data, no placeholders.
+00:00:23,770 --> 00:00:29,036
+Downstream services and frontend billing components still depend on this field.
 
 5
-00:01:00,000 --> 00:01:15,500
-We launch the Loom dashboard. It connects directly to our local report artifact. The Overview displays verified metrics: two breaking findings, high confidence, and full provenance linking back to the active repository.
+00:00:30,500 --> 00:00:33,678
+We run Loom's CLI using loom report.
 
 6
-00:01:16,000 --> 00:01:29,500
-Navigating to the Findings Queue, engineers can triage breaking changes. Each finding clearly communicates its root cause, severity, and consumer modules, eliminating noise from unimpacted files.
+00:00:33,778 --> 00:00:43,316
+Loom's deterministic engine inspects Git diffs, parses TypeScript contracts, and traces consumers across imports without executing untrusted code.
 
 7
-00:01:30,000 --> 00:01:44,500
-Opening the finding detail reveals deep AST evidence. Loom highlights the exact source location in checkout.ts where currency is accessed, along with the precise import path back to payment.ts.
+00:00:45,500 --> 00:00:56,382
+The generated report conforms to the versioned loom.report/v1 schema, embedding stable finding IDs, syntax evidence, and confidence scores.
 
 8
-00:01:45,000 --> 00:01:59,500
-The Impact Graph renders a visual dependency map scoped specifically to the affected contract. We can inspect upstream origins, downstream consumers, and verify transitive relationships at a glance.
+00:00:56,482 --> 00:00:59,540
+No synthetic data, no placeholders.
 
 9
-00:02:00,000 --> 00:02:11,500
-Loom handles direct links and stale URLs gracefully. If a finding ID does not exist in the report, an honest warning informs the user while safely presenting the workspace graph without crashing.
+00:01:00,500 --> 00:01:06,006
+We launch the Loom dashboard, connecting directly to our local report artifact.
 
 10
-00:02:12,000 --> 00:02:24,500
-The Verification view enforces transparency. Because no automated verification scripts were configured in loom config, it honestly reports Not run, never fabricating artificial pass marks or mock test results.
+00:01:06,106 --> 00:01:15,500
+The Overview displays verified metrics: two breaking findings, high confidence, and full provenance linking back to the active repository.
 
 11
-00:02:25,000 --> 00:02:44,500
-Finally, the Reports page inspects artifact provenance and schema compliance. Loom is deterministic, fast, and entirely local-first, empowering teams to refactor TypeScript codebases with absolute confidence.
+00:01:16,500 --> 00:01:21,646
+Navigating to the Findings Queue, engineers can triage breaking changes.
+
+12
+00:01:21,746 --> 00:01:29,800
+Each finding clearly communicates its root cause, severity, and consumer modules, eliminating noise from unimpacted files.
+
+13
+00:01:30,500 --> 00:01:34,902
+Opening the finding detail reveals deep AST evidence.
+
+14
+00:01:35,002 --> 00:01:44,800
+Loom highlights the exact source location in checkout.ts where currency is accessed, along with the precise import path back to payment.ts.
+
+15
+00:01:45,500 --> 00:01:52,350
+The Impact Graph renders a visual dependency map scoped specifically to the affected contract.
+
+16
+00:01:52,450 --> 00:01:59,800
+We can inspect upstream origins, downstream consumers, and verify transitive relationships at a glance.
+
+17
+00:02:00,500 --> 00:02:04,902
+Loom handles direct links and stale URLs gracefully.
+
+18
+00:02:05,002 --> 00:02:11,800
+If a finding ID does not exist in the report, an honest warning informs the user while safely presenting the workspace graph.
+
+19
+00:02:12,500 --> 00:02:15,798
+The Verification view enforces transparency.
+
+20
+00:02:15,898 --> 00:02:24,668
+Because no verification scripts were configured in loom config, it honestly reports Not run—never fabricating artificial pass marks.
+
+21
+00:02:25,500 --> 00:02:31,006
+Finally, the Reports page inspects artifact provenance and schema compliance.
+
+22
+00:02:31,106 --> 00:02:40,884
+Loom is deterministic, fast, and entirely local-first—empowering teams to refactor TypeScript codebases with absolute confidence.
