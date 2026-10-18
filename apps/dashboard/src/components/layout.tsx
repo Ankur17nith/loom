@@ -4,6 +4,7 @@ import { Activity, BarChart3, Command, FileCheck2, FileText, GitBranch, Menu, Se
 import { reportStats, type LoomReport } from "../lib/report.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 import { Button, IconButton, Kbd, SourceBadge, cn } from "./ui.js";
+import { LoomSymbol } from "./brand/loom-brand.js";
 
 const navItems = [
   { to: "/", label: "Overview", icon: BarChart3 },
@@ -13,16 +14,8 @@ const navItems = [
   { to: "/reports", label: "Reports", icon: FileText },
 ];
 
-export function LoomMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" className={className} aria-hidden="true">
-      <path d="M4 6h6v4H4z" fill="currentColor" opacity="0.9" />
-      <path d="M14 6h6v4h-6z" fill="currentColor" opacity="0.9" />
-      <path d="M4 14h6v4H4z" fill="currentColor" opacity="0.9" />
-      <path d="M14 14h6v4h-6z" fill="currentColor" opacity="0.9" />
-      <path d="M13.2 3.5L10.8 20.5" stroke="var(--fl-ember)" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
+export function LoomMark({ className, size = 22 }: { className?: string; size?: number }) {
+  return <LoomSymbol size={size} className={className} />;
 }
 
 export function AppLayout({ report, sourceLabel = "Demo fixture · labeled" }: { report: LoomReport; sourceLabel?: string }) {

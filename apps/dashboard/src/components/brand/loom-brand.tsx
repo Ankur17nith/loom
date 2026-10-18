@@ -102,7 +102,7 @@ export function LoomLogo({
         lineHeight: 1,
       }}
     >
-      <LoomSymbol size={height} surface={surface} />
+      <LoomSymbol size={height} surface={surface} title="" />
       <span
         style={{
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",

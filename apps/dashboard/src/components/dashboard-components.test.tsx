@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { demoReport } from "../data/demo-report.js";
 import { FindingsPage, FindingDetailPage, OverviewPage, VerificationPage, SettingsPage } from "../pages/dashboard-pages.js";
 import { AppLayout } from "./layout.js";
+import { LoomSymbol, LoomLogo, LoomAppIcon } from "./brand/loom-brand.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 
 function resetStore() {
@@ -78,5 +79,29 @@ describe("dashboard components", () => {
     render(<MemoryRouter initialEntries={["/settings"]}><SettingsPage report={demoReport} /></MemoryRouter>);
     expect(screen.getByText("Report source")).toBeInTheDocument();
     expect(screen.getByText("Schema validation")).toBeInTheDocument();
+  });
+
+  it("renders canonical Loom brand components with geometric L and cool blue accent", () => {
+    const { container: symbolDark } = render(<LoomSymbol size={32} title="Loom Dark Symbol" />);
+    expect(symbolDark.querySelector("title")?.textContent).toBe("Loom Dark Symbol");
+    // Verify cool blue accent fill
+    expect(symbolDark.querySelector('path[fill="#889CFF"]')).toBeInTheDocument();
+
+    const { container: symbolLight } = render(<LoomSymbol size={32} surface="light" title="Loom Light Symbol" />);
+    expect(symbolLight.querySelector('path[fill="#4F46E5"]')).toBeInTheDocument();
+
+    const { container: appIcon } = render(<LoomAppIcon size={48} />);
+    expect(appIcon.querySelector('rect[rx="14"]')).toBeInTheDocument();
+
+    render(<LoomLogo height={28} />);
+    expect(screen.getByText("Loom")).toBeInTheDocument();
+  });
+
+  it("renders canonical brand mark inside AppLayout sidebar", () => {
+    resetStore();
+    const { container } = render(<MemoryRouter><AppLayout report={demoReport} /></MemoryRouter>);
+    const brandMark = container.querySelector(".sidebar-brand .brand-mark");
+    expect(brandMark).toBeInTheDocument();
+    expect(brandMark?.querySelector('path[fill="#889CFF"]')).toBeInTheDocument();
   });
 });
