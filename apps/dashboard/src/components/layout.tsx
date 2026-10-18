@@ -13,6 +13,18 @@ const navItems = [
   { to: "/reports", label: "Reports", icon: FileText },
 ];
 
+export function LoomMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" className={className} aria-hidden="true">
+      <path d="M4 6h6v4H4z" fill="currentColor" opacity="0.9" />
+      <path d="M14 6h6v4h-6z" fill="currentColor" opacity="0.9" />
+      <path d="M4 14h6v4H4z" fill="currentColor" opacity="0.9" />
+      <path d="M14 14h6v4h-6z" fill="currentColor" opacity="0.9" />
+      <path d="M13.2 3.5L10.8 20.5" stroke="var(--fl-ember)" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function AppLayout({ report, sourceLabel = "Demo fixture · labeled" }: { report: LoomReport; sourceLabel?: string }) {
   const stats = reportStats(report);
   const location = useLocation();
@@ -35,7 +47,12 @@ export function AppLayout({ report, sourceLabel = "Demo fixture · labeled" }: {
     <a className="skip-link" href="#main-content">Skip to content</a>
     {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
     <aside className={cn("sidebar", sidebarOpen && "sidebar-open")}>
-      <div className="sidebar-brand"><div className="brand-mark" aria-hidden="true"><Activity size={17} strokeWidth={2.3} /></div><span className="brand-name">Loom</span><span className="brand-version">0.1</span><IconButton className="mobile-close" label="Close navigation" onClick={() => setSidebarOpen(false)}><X size={17} /></IconButton></div>
+      <div className="sidebar-brand">
+        <div className="brand-mark" aria-hidden="true"><LoomMark /></div>
+        <span className="brand-name">Loom</span>
+        <span className="brand-version">v0.1.0</span>
+        <IconButton className="mobile-close" label="Close navigation" onClick={() => setSidebarOpen(false)}><X size={17} /></IconButton>
+      </div>
       <div className="sidebar-repo"><span className="repo-pulse" /><div><strong>{report.repository.name}</strong><code>{report.repository.branch}</code></div></div>
       <nav className="main-nav" aria-label="Primary navigation"><span className="nav-section-label">Review</span>{navItems.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/"} onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Icon size={16} aria-hidden="true" /><span>{label}</span>{label === "Findings" && stats.findings > 0 && <span className="nav-count">{stats.findings}</span>}</NavLink>)}<span className="nav-section-label nav-section-spaced">Workspace</span><NavLink to="/settings" onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Settings size={16} aria-hidden="true" /><span>Settings</span></NavLink></nav>
       <div className="sidebar-footer"><SourceBadge label={sourceLabel} /><div className="sidebar-status"><span className={cn("status-pip", `status-pip-${stats.verification}`)} /><span>{stats.verification === "passing" ? "Checks passing" : stats.verification === "not-run" ? "Checks not run" : "Review needs attention"}</span></div><button className="palette-hint" type="button" onClick={() => setPaletteOpen(true)}><Search size={14} />Quick find<Kbd>⌘ K</Kbd></button></div>

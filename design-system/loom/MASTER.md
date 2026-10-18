@@ -23,36 +23,38 @@ metrics. The graph is a workspace, not a decorative chart.
 
 ## Visual language
 
-### Palette
+### Palette (Faultline-inspired Obsidian & Zinc Scale)
 
-| Role | Value | Use |
-|---|---|---|
-| Canvas | `#0B0E12` | Application background |
-| Surface | `#11161D` | Work areas and artifact sections |
-| Raised surface | `#161C24` | Selected rows, controls, inspector blocks |
-| Strong surface | `#1B232D` | Focused review hero and graph nodes |
-| Selected surface | `#182433` | Active review item indicator |
-| Text | `#EDF2F7` | Primary reading content |
-| Secondary text | `#B8C2CE` | Supporting copy and evidence values |
-| Muted text | `#9CB0C6` | Labels, metadata, helper copy (WCAG AA compliant) |
-| Low contrast helper | `#8295AB` | Tertiary metadata, pips, line marks (WCAG AA compliant) |
-| Interaction blue | `#87B4FF` | Selection, links, primary action, graph path |
-| Breaking red | `#FF7F83` | Critical/high risk and failed checks |
-| Uncertainty amber | `#F2BA62` | Incomplete evidence, skipped, inconclusive |
-| Verified green | `#76D7A1` | Explicitly passed checks only |
+| Role | Value | Token | Use |
+|---|---|---|---|
+| Base Canvas | `#09090B` | `--canvas` | Deep obsidian/zinc-950 application background |
+| Surface | `#111215` | `--surface` | Main workspace cards and container sections |
+| Raised surface | `#18191E` | `--surface-raised` | Elevated cards, inspectors, active tab pills |
+| Strong surface | `#202227` | `--surface-strong` | Input backgrounds and code tags |
+| Selected row | `#131D27` | `--surface-selected` | Active queue and finding selection |
+| Structural border | `#27272A` | `--line` | Clean 1px precision hairline borders |
+| Soft border | `#1E1F24` | `--line-soft` | Subtle section dividers and row separators |
+| Primary text | `#F4F4F5` | `--text` | Crisp high-contrast reading content (zinc-100) |
+| Secondary text | `#A1A1AA` | `--text-2` | Supporting copy and evidence descriptions (zinc-400) |
+| Tertiary text | `#828A95` | `--text-3` | Technical metadata, timestamps, and coordinates |
+| Micro text / icons | `#5E6673` | `--text-4` | Line markers, inactive icons, and pips |
+| Diagnostic ember | `#F97316` | `--fl-ember` | Causal break line, high risk findings, brand mark crack |
+| Technical iris | `#38BDF8` | `--fl-iris` | Graph active paths, primary focus, interaction links |
+| Verified proof | `#34D399` | `--fl-proof` | Verified passing gate and passing checks |
+| Breaking red | `#F87171` | `--red` | Critical severity and failed verification checks |
+| Uncertainty amber | `#FBBF24` | `--amber` | Partial gates, inconclusive checks, limits noted |
 
-Use semantic tokens rather than raw values in components. Never use green for a
-generic success mood, and never use color without a text label or icon.
+All status chips follow Faultline's `TONE_CLASS` principle: WCAG AA compliant 300-level text
+on a 10–15% tinted surface with a 35% tinted border. Status is never communicated by color alone.
 
 ### Typography
 
-- IBM Plex Sans: page titles, body copy, finding titles, controls.
+- Inter: headings, page copy, finding titles, controls (`letter-spacing: -0.015em` on headings).
 - JetBrains Mono: file paths, symbols, commits, commands, graph relationships,
-  captured output, tabular counts.
-- Body copy starts at 14px desktop and 14px mobile. Supporting text does not
-  drop below 11px. Code stays at 10–12px with generous line height.
-- Use sentence case. Small mono labels are for navigation and evidence context,
-  not for every heading.
+  captured output, tabular counts (`font-variant-numeric: tabular-nums`).
+- Body copy starts at 13.5px desktop and 14px mobile. Supporting text does not
+  drop below 10.5px. Code stays at 10–12px with generous line height.
+- All numbers, latencies, confidence metrics, and line counts use tabular figures.
 
 ### Spacing and shape
 

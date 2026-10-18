@@ -428,7 +428,7 @@ function VerificationRow({ check }: { check: LoomReport["checks"][number] }) {
         </button>
       </div>
       {open && <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 12px", background: "#111822", border: "1px solid var(--line)", borderBottom: 0, borderRadius: "6px 6px 0 0", marginTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 12px", background: "var(--surface-raised)", border: "1px solid var(--line)", borderBottom: 0, borderRadius: "6px 6px 0 0", marginTop: 12 }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--text-3)" }}>Terminal Output</span>
           <CopyButton value={check.output ?? ""} label="Copy output" />
         </div>

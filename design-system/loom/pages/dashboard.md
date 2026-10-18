@@ -1,11 +1,13 @@
 # Loom dashboard override
-
-The dashboard is a review cockpit for developer change impact. It uses the
+ 
+The dashboard is a review cockpit for developer change impact, styled with a
+premium, technical dark interface inspired by Faultline. It uses the
 master tokens but gives priority to findings, evidence, and directional graph
 context over reporting widgets.
 
 ## Page composition
 
+- Shell features the Loom diagnostic mark: an obsidian plate split by an ember fault line.
 - Overview opens with one priority finding and its verification gate.
 - Findings is a persistent queue/inspector workspace; selection stays visible
   while filters and sorting change.
@@ -21,8 +23,7 @@ context over reporting widgets.
 ## Component rules
 
 - Use dividers and grouped rows before adding a panel border.
-- Use one strong surface for the priority review hero; keep surrounding sections
-  quiet and aligned.
+- Use the deep zinc/obsidian surfaces (`#09090b` canvas, `#111215` cards, `#18191e` elevated).
 - Every finding row exposes severity, title, location, confidence, status, and
   uncertainty where present.
 - Every evidence card exposes its source reference and renders a code snippet

@@ -69,8 +69,8 @@ export function GraphView({ report, focusNodeId, scope, compact = false }: Graph
       label: compact ? undefined : edge.kind,
       animated: Boolean(emphasized),
       className: active && !emphasized ? "graph-edge-dimmed" : "",
-      markerEnd: { type: MarkerType.ArrowClosed, color: emphasized ? "#87b4ff" : "#596779" },
-      style: { stroke: emphasized ? "#87b4ff" : "#596779", strokeWidth: emphasized ? 2.4 : 1.25 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: emphasized ? "#38bdf8" : "#52525b" },
+      style: { stroke: emphasized ? "#38bdf8" : "#52525b", strokeWidth: emphasized ? 2.2 : 1.25 },
       hidden: !visibleByFilter || !visibleByNodes,
     };
   }), [report.edges, compact, active, highlight.edgeIds, relation, matchingNodeIds]);
@@ -104,9 +104,9 @@ export function GraphView({ report, focusNodeId, scope, compact = false }: Graph
     </div>}
     <div className="graph-flow-frame">
       <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.18 }} minZoom={0.3} maxZoom={1.7} onInit={setFlow} onNodeClick={(_, node) => setSelectedNode(node.id)} onPaneClick={() => setSelectedNode(undefined)} proOptions={{ hideAttribution: true }}>
-        <Background color="#232d39" gap={28} size={1} />
+        <Background color="#27272a" gap={28} size={1} />
         <Controls showInteractive={false} />
-        {!compact && <MiniMap nodeColor={(node) => node.data?.changed ? "#87b4ff" : "#596779"} maskColor="rgba(8, 11, 16, .78)" />}
+        {!compact && <MiniMap nodeColor={(node) => node.data?.changed ? "#38bdf8" : "#3f3f46"} maskColor="rgba(9, 9, 11, 0.85)" />}
       </ReactFlow>
       {!compact && <div className="graph-overlay-legend">
         <span><i className="legend-dot legend-changed" aria-hidden="true" />Changed</span>
