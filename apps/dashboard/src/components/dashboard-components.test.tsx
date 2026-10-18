@@ -3,8 +3,9 @@ import "@testing-library/jest-dom/vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { demoReport } from "../data/demo-report.js";
-import { FindingsPage, FindingDetailPage, OverviewPage, VerificationPage, SettingsPage } from "../pages/dashboard-pages.js";
+import { FindingsPage, FindingDetailPage, GraphPage, OverviewPage, VerificationPage, SettingsPage } from "../pages/dashboard-pages.js";
 import { AppLayout } from "./layout.js";
+import { ReportConnectScreen } from "./report-connect.js";
 import { LoomSymbol, LoomLogo, LoomAppIcon } from "./brand/loom-brand.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 
@@ -139,5 +140,63 @@ describe("dashboard components", () => {
     expect(screen.getByText(/Viewing synthetic contract-breakage fixture/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Exit demo \/ Load real report/ }));
     expect(exited).toBe(true);
+  });
+
+  it("handles direct navigation to /graph with a finding query param", () => {
+    resetStore();
+    // 1. Existing finding in demoReport
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/graph?finding=finding-retry-boundary"]}>
+        <GraphPage report={demoReport} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Finding scope")).toBeInTheDocument();
+    expect(screen.getByText(/Retry can duplicate an order/)).toBeInTheDocument();
+    unmount();
+
+    // 2. Unknown finding query param
+    resetStore();
+    render(
+      <MemoryRouter initialEntries={["/graph?finding=finding-nonexistent-999"]}>
+        <GraphPage report={demoReport} />
+      </MemoryRouter>
+    );
+    expect(screen.getByLabelText("Finding not found notice")).toBeInTheDocument();
+    expect(screen.getByText(/Finding "finding-nonexistent-999" not found in current report/)).toBeInTheDocument();
+  });
+
+  it("handles ReportConnectScreen file, URL, and demo interactions and displays errors", () => {
+    let urlSubmitted = "";
+    let demoClicked = false;
+
+    const { rerender } = render(
+      <ReportConnectScreen
+        onFileLoaded={() => {}}
+        onUrlSubmit={(url) => { urlSubmitted = url; }}
+        onDemoClick={() => { demoClicked = true; }}
+      />
+    );
+
+    // Test URL submit
+    const urlInput = screen.getByLabelText("Report URL");
+    fireEvent.change(urlInput, { target: { value: "/reports/report.json" } });
+    fireEvent.click(screen.getByRole("button", { name: /Load/ }));
+    expect(urlSubmitted).toBe("/reports/report.json");
+
+    // Test Demo button
+    fireEvent.click(screen.getByRole("button", { name: /Launch demo fixture/ }));
+    expect(demoClicked).toBe(true);
+
+    // Test Error banner display
+    rerender(
+      <ReportConnectScreen
+        onFileLoaded={() => {}}
+        onUrlSubmit={() => {}}
+        onDemoClick={() => {}}
+        error="Test error: report not found"
+      />
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Test error: report not found")).toBeInTheDocument();
   });
 });

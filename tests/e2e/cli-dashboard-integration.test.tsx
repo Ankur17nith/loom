@@ -1,9 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
+import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli, type CliIo } from "../../src/cli.js";
 import { makeRepo, removeRepo, updateRepo } from "../support/repo.js";
+import { cleanup, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { reportFromJson, safeParseReportJson, type LoomReport } from "../../apps/dashboard/src/lib/report.js";
+import { OverviewPage, FindingsPage, FindingDetailPage, GraphPage, VerificationPage, ReportsPage } from "../../apps/dashboard/src/pages/dashboard-pages.js";
 
 const roots: string[] = [];
 
@@ -116,6 +121,68 @@ describe("CLI-to-Dashboard End-to-End Integration (Phase 3)", () => {
     expect(contractNode).toBeDefined();
     expect(contractNode?.kind).toBe("type");
     expect(contractNode?.label).toBe("UserProfile");
+
+    // 8b. Real Dashboard UI Verification across all routes using the real report
+    // Route 1: Overview
+    const overviewRender = render(<MemoryRouter><OverviewPage report={dashboardReport} /></MemoryRouter>);
+    expect(screen.getByText("PRIORITY CONTRACT BREAKAGE")).toBeInTheDocument();
+    expect(screen.getAllByText(/UserProfile renamed displayName to fullName/).length).toBeGreaterThanOrEqual(1);
+    overviewRender.unmount();
+    cleanup();
+
+    // Route 2: Findings Queue
+    const findingsRender = render(<MemoryRouter><FindingsPage report={dashboardReport} /></MemoryRouter>);
+    expect(screen.getByText("Review queue")).toBeInTheDocument();
+    expect(screen.getAllByText(/UserProfile renamed displayName to fullName/).length).toBeGreaterThanOrEqual(1);
+    findingsRender.unmount();
+    cleanup();
+
+    // Route 3: Finding Detail
+    const detailRender = render(
+      <MemoryRouter initialEntries={[`/findings/${finding.id}`]}>
+        <Routes>
+          <Route path="/findings/:findingId" element={<FindingDetailPage report={dashboardReport} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(screen.getAllByText(/profile\.displayName/).length).toBeGreaterThanOrEqual(1);
+    detailRender.unmount();
+    cleanup();
+
+    // Route 4: Graph with real finding ID (?finding=<real-id>)
+    const graphRealRender = render(
+      <MemoryRouter initialEntries={[`/graph?finding=${finding.id}`]}>
+        <GraphPage report={dashboardReport} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Finding scope")).toBeInTheDocument();
+    graphRealRender.unmount();
+    cleanup();
+
+    // Route 4b: Graph with missing/unknown finding ID (?finding=finding-retry-boundary)
+    const graphMissingRender = render(
+      <MemoryRouter initialEntries={["/graph?finding=finding-retry-boundary"]}>
+        <GraphPage report={dashboardReport} />
+      </MemoryRouter>
+    );
+    expect(screen.getByLabelText("Finding not found notice")).toBeInTheDocument();
+    expect(screen.getByText(/Finding "finding-retry-boundary" not found in current report/)).toBeInTheDocument();
+    graphMissingRender.unmount();
+    cleanup();
+
+    // Route 5: Verification (honest not-run state)
+    const verifRender = render(<MemoryRouter><VerificationPage report={dashboardReport} /></MemoryRouter>);
+    expect(screen.getByText("Not run")).toBeInTheDocument();
+    expect(screen.getByText("Verification not run")).toBeInTheDocument();
+    verifRender.unmount();
+    cleanup();
+
+    // Route 6: Reports
+    const reportsRender = render(<MemoryRouter><ReportsPage report={dashboardReport} /></MemoryRouter>);
+    expect(screen.getByText(dashboardReport.reportId)).toBeInTheDocument();
+    expect(screen.getByText("What this artifact contains")).toBeInTheDocument();
+    reportsRender.unmount();
+    cleanup();
 
     // 9. Changing the source and rescanning updates the displayed results
     // Fix consumer to read fullName instead of displayName

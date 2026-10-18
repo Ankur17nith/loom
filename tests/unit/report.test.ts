@@ -14,6 +14,15 @@ describe("versioned report adapter", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects unsupported report versions with a descriptive error", () => {
+    expect(() => reportFromJson({ version: "loom.report/v99" })).toThrow(/Unsupported report version "loom.report\/v99"/);
+  });
+
+  it("rejects non-object or null input with a descriptive error", () => {
+    expect(() => reportFromJson("not an object")).toThrow(/Report data must be a valid JSON object/);
+    expect(() => reportFromJson(null)).toThrow(/Report data must be a valid JSON object/);
+  });
+
   it("adapts a real Loom engine report without inventing relationships", () => {
     const adapted = reportFromJson({
       schemaVersion: 1,

@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "jsdom",
-    include: ["tests/**/*.test.ts", "apps/dashboard/src/**/*.test.tsx"],
+    include: ["tests/**/*.test.{ts,tsx}", "apps/dashboard/src/**/*.test.{ts,tsx}"],
     setupFiles: ["tests/setup.ts"],
     restoreMocks: true,
     clearMocks: true,
