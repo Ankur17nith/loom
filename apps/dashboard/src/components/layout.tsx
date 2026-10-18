@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Activity, BarChart3, Command, FileCheck2, FileText, GitBranch, Menu, Search, Settings, ShieldCheck, X } from "lucide-react";
+import { Activity, BarChart3, Command, FileCheck2, FileText, GitBranch, Menu, Search, Settings, ShieldCheck, Sparkles, X } from "lucide-react";
 import { reportStats, type LoomReport } from "../lib/report.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 import { Button, IconButton, Kbd, SourceBadge, cn } from "./ui.js";
@@ -25,7 +25,7 @@ export function AppLayout({ report, sourceLabel = "Demo fixture · labeled" }: {
   const setPaletteOpen = useDashboardStore((state) => state.setCommandPaletteOpen);
   const sidebarOpen = useDashboardStore((state) => state.sidebarOpen);
   const setSidebarOpen = useDashboardStore((state) => state.setSidebarOpen);
-  const activeLabel = location.pathname === "/" ? "Overview" : navItems.find((item) => location.pathname.startsWith(item.to) && item.to !== "/")?.label ?? "Settings";
+  const activeLabel = location.pathname === "/" ? "Overview" : location.pathname === "/brand" ? "Brand identity" : navItems.find((item) => location.pathname.startsWith(item.to) && item.to !== "/")?.label ?? "Settings";
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -47,7 +47,7 @@ export function AppLayout({ report, sourceLabel = "Demo fixture · labeled" }: {
         <IconButton className="mobile-close" label="Close navigation" onClick={() => setSidebarOpen(false)}><X size={17} /></IconButton>
       </div>
       <div className="sidebar-repo"><span className="repo-pulse" /><div><strong>{report.repository.name}</strong><code>{report.repository.branch}</code></div></div>
-      <nav className="main-nav" aria-label="Primary navigation"><span className="nav-section-label">Review</span>{navItems.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/"} onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Icon size={16} aria-hidden="true" /><span>{label}</span>{label === "Findings" && stats.findings > 0 && <span className="nav-count">{stats.findings}</span>}</NavLink>)}<span className="nav-section-label nav-section-spaced">Workspace</span><NavLink to="/settings" onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Settings size={16} aria-hidden="true" /><span>Settings</span></NavLink></nav>
+      <nav className="main-nav" aria-label="Primary navigation"><span className="nav-section-label">Review</span>{navItems.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} end={to === "/"} onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Icon size={16} aria-hidden="true" /><span>{label}</span>{label === "Findings" && stats.findings > 0 && <span className="nav-count">{stats.findings}</span>}</NavLink>)}<span className="nav-section-label nav-section-spaced">Workspace</span><NavLink to="/settings" onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Settings size={16} aria-hidden="true" /><span>Settings</span></NavLink><NavLink to="/brand" onClick={() => setSidebarOpen(false)} className={({ isActive }) => cn("nav-link", isActive && "nav-link-active")}><Sparkles size={16} aria-hidden="true" /><span>Brand identity</span></NavLink></nav>
       <div className="sidebar-footer"><SourceBadge label={sourceLabel} /><div className="sidebar-status"><span className={cn("status-pip", `status-pip-${stats.verification}`)} /><span>{stats.verification === "passing" ? "Checks passing" : stats.verification === "not-run" ? "Checks not run" : "Review needs attention"}</span></div><button className="palette-hint" type="button" onClick={() => setPaletteOpen(true)}><Search size={14} />Quick find<Kbd>⌘ K</Kbd></button></div>
     </aside>
     <div className="content-frame">
@@ -72,6 +72,7 @@ function CommandPalette({ report }: { report: LoomReport }) {
     { label: "Inspect verification", hint: "Attached checks", to: "/verification", icon: FileCheck2 },
     { label: "Open report artifact", hint: "Provenance and export", to: "/reports", icon: FileText },
     { label: "Open settings", hint: "Workspace configuration", to: "/settings", icon: Settings },
+    { label: "Open brand identity", hint: "Loom design system & assets", to: "/brand", icon: Sparkles },
   ], [stats.findings]);
   const visible = actions.filter((action) => `${action.label} ${action.hint}`.toLowerCase().includes(query.toLowerCase()));
   useEffect(() => setActiveIndex(0), [query]);

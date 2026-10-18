@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/layout.js";
 import { demoReport } from "./data/demo-report.js";
 import { FindingsPage, FindingDetailPage, GraphPage, OverviewPage, ReportsPage, SettingsPage, VerificationPage } from "./pages/dashboard-pages.js";
+import { BrandShowcasePage } from "./pages/brand-page.js";
 import { reportFromJson, type ReportLoadResult } from "./lib/report.js";
 import { ErrorState, LoadingState } from "./components/ui.js";
 
@@ -27,5 +28,5 @@ export function App() {
   if (error) return <BrowserRouter><div className="app-state"><ErrorState title="Report unavailable" description={error} /></div></BrowserRouter>;
   if (!loadedReport) return <BrowserRouter><div className="app-state"><LoadingState label="Loading Loom report" /></div></BrowserRouter>;
   const { report, label } = loadedReport;
-  return <BrowserRouter><Routes><Route element={<AppLayout report={report} sourceLabel={label} />}><Route index element={<OverviewPage report={report} />} /><Route path="graph" element={<GraphPage report={report} />} /><Route path="findings" element={<FindingsPage report={report} />} /><Route path="findings/:findingId" element={<FindingDetailPage report={report} />} /><Route path="verification" element={<VerificationPage report={report} />} /><Route path="reports" element={<ReportsPage report={report} />} /><Route path="settings" element={<SettingsPage report={report} />} /><Route path="*" element={<Navigate to="/" replace />} /></Route></Routes></BrowserRouter>;
+  return <BrowserRouter><Routes><Route element={<AppLayout report={report} sourceLabel={label} />}><Route index element={<OverviewPage report={report} />} /><Route path="graph" element={<GraphPage report={report} />} /><Route path="findings" element={<FindingsPage report={report} />} /><Route path="findings/:findingId" element={<FindingDetailPage report={report} />} /><Route path="verification" element={<VerificationPage report={report} />} /><Route path="reports" element={<ReportsPage report={report} />} /><Route path="settings" element={<SettingsPage report={report} />} /><Route path="brand" element={<BrandShowcasePage />} /><Route path="*" element={<Navigate to="/" replace />} /></Route></Routes></BrowserRouter>;
 }

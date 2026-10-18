@@ -1,571 +1,478 @@
 import React, { useState } from "react";
 import {
-  Activity,
-  AlertTriangle,
-  ArrowRight,
-  BarChart3,
-  CheckCircle2,
-  ChevronRight,
-  Code2,
+  Check,
+  Copy,
   ExternalLink,
-  FileCheck2,
-  FileCode2,
-  FileText,
-  Filter,
-  GitBranch,
-  GitCommit,
-  Info,
   Layers,
-  Search,
-  Settings,
-  ShieldAlert,
-  ShieldCheck,
+  Sparkles,
   Terminal,
-  XCircle,
+  Grid,
+  ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
+import { LoomSymbol, LoomLogo, LoomAppIcon } from "./components/brand/loom-brand.js";
+
+const colorTokens = [
+  { name: "Obsidian Canvas", hex: "#09090B", role: "Primary base background", textDark: false },
+  { name: "Card Surface", hex: "#111215", role: "Component containers & panels", textDark: false },
+  { name: "Elevated Surface", hex: "#18191E", role: "Floating panels & modals", textDark: false },
+  { name: "Cool Blue Accent", hex: "#889CFF", role: "Brand signature & focus state", textDark: true },
+  { name: "Blue 3D Facet", hex: "#3E406D", role: "Chiseled shadow relief for accent", textDark: false },
+  { name: "Pure Front L", hex: "#F4F5F7", role: "Geometric symbol face & display", textDark: true },
+  { name: "White 3D Facet", hex: "#606264", role: "Chiseled shadow relief for L base", textDark: false },
+  { name: "Proof Emerald", hex: "#34D399", role: "Verification & passing checks", textDark: true },
+  { name: "Ember Risk", hex: "#F97316", role: "Contract break & high severity", textDark: true },
+];
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"overview" | "findings" | "graph" | "verification" | "reports" | "settings">("overview");
-  const [selectedFindingId, setSelectedFindingId] = useState<string>("finding-1");
-  const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [copiedHex, setCopiedHex] = useState<string | null>(null);
 
-  const findings = [
-    {
-      id: "finding-1",
-      severity: "critical",
-      title: "Removed billingAddress field from CheckoutPayload contract",
-      module: "src/contracts/checkout.ts",
-      consumerCount: 4,
-      confidence: 0.98,
-      rule: "removed-contract-field",
-      file: "src/services/payment-gateway.ts",
-      line: 42,
-      col: 18,
-      codeSnippet: `export async function processPayment(payload: CheckoutPayload) {\n  const address = payload.billingAddress; // BREAK: Property billingAddress does not exist\n  return gateway.charge({ amount: payload.total, address });\n}`,
-      affectedSymbol: "billingAddress",
-      tracePath: ["CheckoutPayload", "PaymentService", "payment-gateway.ts", "checkout-flow.tsx"],
-      mitigation: "Restore billingAddress or migrate downstream consumers to use billingProfile.address.",
-    },
-    {
-      id: "finding-2",
-      severity: "high",
-      title: "Added required taxIdentifier field to CustomerAccount",
-      module: "src/contracts/customer.ts",
-      consumerCount: 2,
-      confidence: 0.92,
-      rule: "added-required-field",
-      file: "src/components/account-form.tsx",
-      line: 88,
-      col: 12,
-      codeSnippet: `const newAccount: CustomerAccount = {\n  id: generateId(),\n  name: formData.name,\n  // ERROR: Property taxIdentifier is missing\n};`,
-      affectedSymbol: "taxIdentifier",
-      tracePath: ["CustomerAccount", "AccountService", "account-form.tsx"],
-      mitigation: "Make taxIdentifier optional (taxIdentifier?: string) or provide default fallback in account creators.",
-    },
-    {
-      id: "finding-3",
-      severity: "medium",
-      title: "Field renamed: customerDiscount -> promotionalDiscount",
-      module: "src/contracts/pricing.ts",
-      consumerCount: 3,
-      confidence: 0.85,
-      rule: "renamed-contract-field",
-      file: "src/lib/discounts.ts",
-      line: 15,
-      col: 22,
-      codeSnippet: `export function applyDiscount(price: number, discount: DiscountRule) {\n  return price - (discount.customerDiscount ?? 0);\n}`,
-      affectedSymbol: "customerDiscount",
-      tracePath: ["DiscountRule", "PricingEngine", "discounts.ts"],
-      mitigation: "Add deprecated alias for customerDiscount or update discounts.ts to promotionalDiscount.",
-    },
-  ];
-
-  const filteredFindings = findings.filter((f) => {
-    if (severityFilter !== "all" && f.severity !== severityFilter) return false;
-    if (searchQuery && !f.title.toLowerCase().includes(searchQuery.toLowerCase()) && !f.module.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
-
-  const selectedFinding = findings.find((f) => f.id === selectedFindingId) ?? findings[0];
+  const copyToClipboard = (hex: string) => {
+    navigator.clipboard.writeText(hex).catch(() => {});
+    setCopiedHex(hex);
+    setTimeout(() => setCopiedHex(null), 1800);
+  };
 
   return (
-    <div className="app-frame">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <path d="M4 6h6v4H4z" fill="currentColor" opacity="0.9" />
-              <path d="M14 6h6v4h-6z" fill="currentColor" opacity="0.9" />
-              <path d="M4 14h6v4H4z" fill="currentColor" opacity="0.9" />
-              <path d="M14 14h6v4h-6z" fill="currentColor" opacity="0.9" />
-              <path d="M13.2 3.5L10.8 20.5" stroke="var(--fl-ember)" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span className="brand-name">Loom</span>
-          <span className="brand-version">v0.1.0</span>
+    <div style={{ minHeight: "100vh", background: "var(--canvas)", color: "var(--text)" }}>
+      {/* Top Header */}
+      <header
+        style={{
+          borderBottom: "1px solid var(--line-soft)",
+          padding: "14px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          background: "rgba(9, 9, 11, 0.85)",
+          backdropFilter: "blur(12px)",
+          zIndex: 100,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <LoomLogo height={26} />
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              color: "var(--text-3)",
+              background: "#16171c",
+              border: "1px solid #27272a",
+              padding: "2px 6px",
+              borderRadius: 4,
+            }}
+          >
+            Brand Spec v1.0
+          </span>
         </div>
 
-        <div className="sidebar-repo">
-          <span className="repo-pulse" />
-          <div>
-            <strong>acme-commerce</strong>
-            <code>feat/checkout-v2</code>
-          </div>
-        </div>
-
-        <nav className="main-nav" aria-label="Primary navigation">
-          <span className="nav-section-label">Review</span>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "overview" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("overview")}
+        <nav style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <a
+            href="#symbol"
+            style={{ color: "var(--text-2)", fontSize: 13, textDecoration: "none" }}
           >
-            <BarChart3 size={16} />
-            <span>Overview</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "findings" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("findings")}
+            The Symbol
+          </a>
+          <a
+            href="#grid"
+            style={{ color: "var(--text-2)", fontSize: 13, textDecoration: "none" }}
           >
-            <ShieldCheck size={16} />
-            <span>Findings</span>
-            <span className="nav-count">{findings.length}</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "graph" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("graph")}
+            Geometry
+          </a>
+          <a
+            href="#colors"
+            style={{ color: "var(--text-2)", fontSize: 13, textDecoration: "none" }}
           >
-            <GitBranch size={16} />
-            <span>Impact graph</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "verification" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("verification")}
+            Colors
+          </a>
+          <a
+            href="#scales"
+            style={{ color: "var(--text-2)", fontSize: 13, textDecoration: "none" }}
           >
-            <FileCheck2 size={16} />
-            <span>Verification</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "reports" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("reports")}
+            Scale Matrix
+          </a>
+          <a
+            href="http://localhost:4175/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "var(--brand-blue)",
+              color: "#07111d",
+              padding: "6px 12px",
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
           >
-            <FileText size={16} />
-            <span>Reports</span>
-          </button>
-
-          <span className="nav-section-label nav-section-spaced">Workspace</span>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "settings" ? "nav-link-active" : ""}`}
-            onClick={() => setActiveTab("settings")}
-          >
-            <Settings size={16} />
-            <span>Settings</span>
-          </button>
+            <span>Launch Cockpit</span>
+            <ArrowRight size={14} />
+          </a>
         </nav>
+      </header>
 
-        <div className="sidebar-footer">
-          <div className="source-badge source-live">
-            <span className="source-dot" />
-            <span>Loom engine report</span>
+      {/* Main Content */}
+      <main style={{ maxWidth: 1120, margin: "0 auto", padding: "40px 24px 80px" }}>
+        {/* Hero Section */}
+        <section
+          style={{
+            background: "linear-gradient(180deg, #13141a 0%, #09090b 100%)",
+            border: "1px solid var(--line)",
+            borderRadius: 14,
+            padding: "80px 24px",
+            textAlign: "center",
+            marginBottom: 48,
+            boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+          }}
+        >
+          <div style={{ display: "inline-flex", marginBottom: 24 }}>
+            <LoomLogo height={72} />
           </div>
-          <div className="sidebar-status">
-            <span className="status-pip status-pip-passing" />
-            <span>Verification passing</span>
-          </div>
-        </div>
-      </aside>
+          <p
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--brand-blue)",
+              marginBottom: 16,
+            }}
+          >
+            Change-Impact Intelligence · Brand System
+          </p>
+          <h1
+            style={{
+              fontSize: 32,
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              margin: "0 auto 16px",
+              maxWidth: 720,
+              color: "#ffffff",
+            }}
+          >
+            Architectural precision for static analysis and contract verification
+          </h1>
+          <p
+            style={{
+              maxWidth: 640,
+              margin: "0 auto 28px",
+              color: "var(--text-2)",
+              fontSize: 15,
+              lineHeight: 1.6,
+            }}
+          >
+            Derived faithfully from the Figma Make project: an uncompromising dark atmosphere, chiseled relief facets, and an electric cool blue accent that balances conservative compiler rigor with high developer utility.
+          </p>
 
-      {/* Content Frame */}
-      <div className="content-frame">
-        <header className="topbar">
-          <div className="topbar-title">
-            <span>acme-commerce</span>
-            <span className="topbar-slash">/</span>
-            <strong>
-              {activeTab === "overview" && "Overview"}
-              {activeTab === "findings" && "Findings"}
-              {activeTab === "graph" && "Impact graph"}
-              {activeTab === "verification" && "Verification"}
-              {activeTab === "reports" && "Reports"}
-              {activeTab === "settings" && "Settings"}
-            </strong>
+          <div style={{ display: "flex", justifyContent: "center", gap: 14 }}>
+            <a
+              href="http://localhost:4175/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--brand-blue)",
+                color: "#07111d",
+                padding: "10px 20px",
+                borderRadius: 7,
+                fontSize: 13.5,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              <span>Open Developer Cockpit</span>
+              <ArrowRight size={16} />
+            </a>
+            <a
+              href="#symbol"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--surface)",
+                color: "var(--text)",
+                border: "1px solid var(--line)",
+                padding: "10px 18px",
+                borderRadius: 7,
+                fontSize: 13.5,
+                fontWeight: 500,
+                textDecoration: "none",
+              }}
+            >
+              <span>Explore Identity Spec</span>
+            </a>
           </div>
-          <div className="review-context">
-            <span>
-              <span className="context-dot" />feat/checkout-v2
-            </span>
-            <span>base <code>a1b2c3d</code></span>
-            <span>commit <code>e4f5a6b</code></span>
-          </div>
-          <div className="topbar-actions">
-            <div className="source-badge source-live">
-              <span className="source-dot" />
-              <span>Engine v0.1.0</span>
-            </div>
-          </div>
-        </header>
+        </section>
 
-        <main className="page-content">
-          {/* OVERVIEW SCREEN */}
-          {activeTab === "overview" && (
-            <div className="overview-cockpit">
-              {/* Hero Priority Break Card */}
-              <div className="hero-break-card">
-                <div className="hero-break-header">
-                  <div className="hero-break-tag">
-                    <ShieldAlert size={15} />
-                    <span>PRIORITY CONTRACT BREAKAGE</span>
-                  </div>
-                  <div className="verification-gate-pill passing">
-                    <CheckCircle2 size={13} />
-                    <span>Gate passing</span>
-                  </div>
-                </div>
-                <h1 className="hero-break-title">
-                  Removed <code>billingAddress</code> from <code>CheckoutPayload</code> breaks payment processing
-                </h1>
-                <p className="hero-break-desc">
-                  Working tree modification in <code>src/contracts/checkout.ts</code> removes the field while 4 downstream modules actively access it in payment pipelines.
-                </p>
-                <div className="hero-break-meta">
-                  <span><strong>4</strong> affected consumers</span>
-                  <span><strong>98%</strong> confidence</span>
-                  <span>Rule: <code>removed-contract-field</code></span>
-                </div>
+        {/* Section 1: The Symbol */}
+        <section id="symbol" style={{ marginBottom: 48 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                padding: 28,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <Sparkles size={18} style={{ color: "var(--brand-blue)" }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>The Geometric L Symbol</h2>
               </div>
+              <p style={{ color: "var(--text-2)", fontSize: 13.5, lineHeight: 1.6, marginBottom: 20 }}>
+                The Loom mark is a bold, chiseled monogram formed by two interlocking structural elements:
+              </p>
+              <ul style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.7, paddingLeft: 20, margin: "0 0 20px" }}>
+                <li>
+                  <strong style={{ color: "#ffffff" }}>The Foundation:</strong> A solid off-white capital “L” ground plate with an 18px stem and 17px base.
+                </li>
+                <li>
+                  <strong style={{ color: "var(--brand-blue)" }}>The Cool Blue Block:</strong> An electric iris accent (#889CFF) positioned nestled in the inner counter space.
+                </li>
+                <li>
+                  <strong style={{ color: "var(--text-3)" }}>Chiseled Relieving Facets:</strong> 9px dark facets on the right side of both the blue accent and the white base, giving subtle depth and architectural weight.
+                </li>
+              </ul>
 
-              {/* Metric Row */}
-              <div className="metric-strip">
-                <div className="metric-box">
-                  <span className="metric-label">Findings</span>
-                  <span className="metric-val text-red">3</span>
-                  <span className="metric-sub">1 critical, 1 high, 1 med</span>
+              <div style={{ display: "flex", gap: 20, justifyContent: "center", background: "#09090b", padding: 24, borderRadius: 8, border: "1px solid #1f2026" }}>
+                <div style={{ textAlign: "center" }}>
+                  <LoomSymbol size={80} />
+                  <span style={{ display: "block", marginTop: 8, fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-3)" }}>
+                    LoomSymbol (Dark)
+                  </span>
                 </div>
-                <div className="metric-box">
-                  <span className="metric-label">Affected Modules</span>
-                  <span className="metric-val text-ember">9</span>
-                  <span className="metric-sub">across 4 workspaces</span>
-                </div>
-                <div className="metric-box">
-                  <span className="metric-label">Verification Gate</span>
-                  <span className="metric-val text-green">100%</span>
-                  <span className="metric-sub">4/4 tests executed</span>
-                </div>
-                <div className="metric-box">
-                  <span className="metric-label">Confidence</span>
-                  <span className="metric-val text-iris">High</span>
-                  <span className="metric-sub">Resolved compiler bindings</span>
-                </div>
-              </div>
-
-              {/* Review Queue & Graph Grid */}
-              <div className="overview-grid">
-                <div className="overview-panel">
-                  <div className="panel-head">
-                    <h2>Review Queue</h2>
-                    <span className="queue-badge">3 unreviewed</span>
-                  </div>
-                  <div className="queue-list">
-                    {findings.map((f) => (
-                      <div
-                        key={f.id}
-                        className="queue-item"
-                        onClick={() => {
-                          setSelectedFindingId(f.id);
-                          setActiveTab("findings");
-                        }}
-                      >
-                        <div className="queue-item-top">
-                          <span className={`tag tag-${f.severity}`}>{f.severity}</span>
-                          <span className="queue-confidence">{Math.round(f.confidence * 100)}% conf</span>
-                        </div>
-                        <h3 className="queue-item-title">{f.title}</h3>
-                        <div className="queue-item-bottom">
-                          <code>{f.module}</code>
-                          <span>{f.consumerCount} consumers</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="overview-panel">
-                  <div className="panel-head">
-                    <h2>Impact Preview</h2>
-                    <button className="text-btn" onClick={() => setActiveTab("graph")}>
-                      Full graph <ChevronRight size={14} />
-                    </button>
-                  </div>
-                  <div className="graph-preview-canvas">
-                    <div className="preview-node source-node">
-                      <FileCode2 size={15} />
-                      <div>
-                        <strong>checkout.ts</strong>
-                        <span>Modified Contract</span>
-                      </div>
-                    </div>
-                    <div className="preview-edge" />
-                    <div className="preview-node break-node">
-                      <ShieldAlert size={15} />
-                      <div>
-                        <strong>payment-gateway.ts</strong>
-                        <span>Broken Access (Line 42)</span>
-                      </div>
-                    </div>
-                    <div className="preview-edge" />
-                    <div className="preview-node consumer-node">
-                      <Layers size={15} />
-                      <div>
-                        <strong>checkout-flow.tsx</strong>
-                        <span>Downstream UI</span>
-                      </div>
-                    </div>
-                  </div>
+                <div style={{ textAlign: "center" }}>
+                  <LoomAppIcon size={80} />
+                  <span style={{ display: "block", marginTop: 8, fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-3)" }}>
+                    LoomAppIcon (64px)
+                  </span>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* FINDINGS SCREEN */}
-          {activeTab === "findings" && (
-            <div className="findings-workspace">
-              {/* Finding Queue Column */}
-              <div className="findings-queue-pane">
-                <div className="filter-bar">
-                  <div className="search-input-wrap">
-                    <Search size={14} />
-                    <input
-                      type="text"
-                      placeholder="Filter findings..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="filter-select-wrap">
-                    <select
-                      value={severityFilter}
-                      onChange={(e) => setSeverityFilter(e.target.value)}
-                    >
-                      <option value="all">All severities</option>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                    </select>
-                  </div>
+            {/* Geometry & Grid */}
+            <div
+              id="grid"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                padding: 28,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <Grid size={18} style={{ color: "var(--brand-blue)" }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>7×7 Modular Grid System</h2>
+              </div>
+              <p style={{ color: "var(--text-2)", fontSize: 13.5, lineHeight: 1.6, marginBottom: 20 }}>
+                Every coordinate, proportion, and spacing ratio aligns strictly to a 7×7 module with 9px unit increments:
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 12, fontFamily: "var(--mono)", color: "var(--text-2)", marginBottom: 24 }}>
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Stem:</span> 18px (2 units)
                 </div>
-
-                <div className="findings-list">
-                  {filteredFindings.map((f) => (
-                    <div
-                      key={f.id}
-                      className={`finding-card ${selectedFindingId === f.id ? "finding-card-active" : ""}`}
-                      onClick={() => setSelectedFindingId(f.id)}
-                    >
-                      <div className="finding-card-top">
-                        <span className={`tag tag-${f.severity}`}>{f.severity}</span>
-                        <span className="finding-card-rule">{f.rule}</span>
-                        <span className="finding-card-conf">{Math.round(f.confidence * 100)}%</span>
-                      </div>
-                      <h3 className="finding-card-title">{f.title}</h3>
-                      <div className="finding-card-sub">
-                        <code>{f.file}:{f.line}</code>
-                        <span>{f.consumerCount} consumers</span>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Base:</span> 17px (2 units)
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Counter:</span> 8px (1 unit)
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Accent:</span> 27×36px (3×4 units)
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Facet:</span> 9px (1 unit)
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 6, border: "1px solid var(--line-soft)" }}>
+                  <span style={{ color: "var(--brand-blue)" }}>Total Grid:</span> 63×63px (7×7 units)
                 </div>
               </div>
 
-              {/* Persistent Evidence Inspector */}
-              <div className="evidence-inspector-pane">
-                <div className="inspector-head">
-                  <div className="inspector-head-top">
-                    <span className={`tag tag-${selectedFinding.severity}`}>{selectedFinding.severity}</span>
-                    <span className="inspector-rule">{selectedFinding.rule}</span>
-                    <span className="inspector-confidence">{Math.round(selectedFinding.confidence * 100)}% confidence</span>
-                  </div>
-                  <h2 className="inspector-title">{selectedFinding.title}</h2>
-                  <div className="inspector-location">
-                    <span>Source: <code>{selectedFinding.module}</code></span>
-                    <span>Consumer: <code>{selectedFinding.file}:{selectedFinding.line}:{selectedFinding.col}</code></span>
-                  </div>
-                </div>
-
-                <div className="inspector-section">
-                  <h3 className="section-title">
-                    <Code2 size={14} />
-                    <span>Evidence Code Context</span>
-                  </h3>
-                  <div className="code-viewer">
-                    <div className="code-viewer-header">
-                      <span>{selectedFinding.file}</span>
-                      <span>TypeScript</span>
-                    </div>
-                    <pre className="code-viewer-pre">
-                      <code>{selectedFinding.codeSnippet}</code>
-                    </pre>
-                  </div>
-                </div>
-
-                <div className="inspector-section">
-                  <h3 className="section-title">
-                    <GitBranch size={14} />
-                    <span>Dependency Trace Path</span>
-                  </h3>
-                  <div className="trace-path-flow">
-                    {selectedFinding.tracePath.map((step, idx) => (
-                      <React.Fragment key={idx}>
-                        <div className="trace-step">
-                          <code>{step}</code>
-                        </div>
-                        {idx < selectedFinding.tracePath.length - 1 && (
-                          <ChevronRight size={13} className="trace-arrow" />
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="inspector-section">
-                  <h3 className="section-title">
-                    <Info size={14} />
-                    <span>Suggested Mitigation</span>
-                  </h3>
-                  <div className="mitigation-box">
-                    <p>{selectedFinding.mitigation}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* GRAPH SCREEN */}
-          {activeTab === "graph" && (
-            <div className="graph-workspace-view">
-              <div className="graph-canvas-container">
-                <div className="graph-canvas-placeholder">
-                  <div className="graph-mock-center">
-                    <div className="graph-cluster">
-                      <div className="graph-node-bubble source">
-                        <strong>checkout.ts</strong>
-                        <span>Contract Root</span>
-                      </div>
-                      <div className="graph-edge-connector" />
-                      <div className="graph-node-bubble impact">
-                        <strong>payment-gateway.ts</strong>
-                        <span>Critical Impact</span>
-                      </div>
-                      <div className="graph-edge-connector" />
-                      <div className="graph-node-bubble consumer">
-                        <strong>checkout-flow.tsx</strong>
-                        <span>Consumer UI</span>
-                      </div>
-                    </div>
-                    <p className="graph-hint">Interactive ReactFlow graph active in main dashboard at /graph</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VERIFICATION SCREEN */}
-          {activeTab === "verification" && (
-            <div className="verification-screen">
-              <div className="verification-head">
+              <div style={{ background: "#09090b", padding: "16px 20px", borderRadius: 8, border: "1px solid #1f2026", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <h2>Attached Verification Checks</h2>
-                  <p>Read-only check outcomes attached to Loom report v0.1.0</p>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#ffffff" }}>Light Surface Treatment</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", fontFamily: "var(--mono)" }}>For documentation & white backgrounds</div>
                 </div>
-                <div className="verification-badge-large passing">
-                  <CheckCircle2 size={16} />
-                  <span>All Checks Passing (4/4)</span>
-                </div>
-              </div>
-
-              <div className="checks-list">
-                <div className="check-card check-passed">
-                  <div className="check-card-left">
-                    <CheckCircle2 size={16} className="text-green" />
-                    <div>
-                      <strong>TypeScript Typecheck</strong>
-                      <code>npm run typecheck</code>
-                    </div>
-                  </div>
-                  <span className="check-timing">240ms</span>
-                </div>
-                <div className="check-card check-passed">
-                  <div className="check-card-left">
-                    <CheckCircle2 size={16} className="text-green" />
-                    <div>
-                      <strong>Unit & Contract Tests</strong>
-                      <code>npm run test:contracts</code>
-                    </div>
-                  </div>
-                  <span className="check-timing">680ms</span>
-                </div>
-                <div className="check-card check-passed">
-                  <div className="check-card-left">
-                    <CheckCircle2 size={16} className="text-green" />
-                    <div>
-                      <strong>Lint & Static Analysis</strong>
-                      <code>npm run lint</code>
-                    </div>
-                  </div>
-                  <span className="check-timing">420ms</span>
+                <div style={{ background: "#ffffff", padding: "8px 12px", borderRadius: 6 }}>
+                  <LoomSymbol size={28} surface="light" />
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        </section>
 
-          {/* REPORTS SCREEN */}
-          {activeTab === "reports" && (
-            <div className="reports-screen">
-              <div className="reports-head">
-                <h2>Loom Report Artifacts</h2>
-                <p>Validated report schema: <code>loom.report/v1</code></p>
-              </div>
-              <div className="report-card">
-                <div className="report-card-meta">
-                  <strong>demo-checkout-2026-10-18.json</strong>
-                  <span>Generated: 2026-10-18T12:00:00Z</span>
-                  <span>Commit: <code>e4f5a6b</code></span>
-                </div>
-                <div className="report-card-actions">
-                  <button className="action-btn">Download JSON</button>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Section 2: Scale Verification */}
+        <section
+          id="scales"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--line)",
+            borderRadius: 10,
+            padding: 28,
+            marginBottom: 48,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <Layers size={18} style={{ color: "var(--brand-blue)" }} />
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Silhouette Scale Verification</h2>
+          </div>
+          <p style={{ color: "var(--text-2)", fontSize: 13.5, marginBottom: 24 }}>
+            The geometric L symbol maintains strong silhouette integrity and instant recognizability across all developer viewports:
+          </p>
 
-          {/* SETTINGS SCREEN */}
-          {activeTab === "settings" && (
-            <div className="settings-screen">
-              <div className="settings-head">
-                <h2>Analysis Configuration</h2>
-                <p>Local configuration loaded from <code>.loom/config.json</code></p>
-              </div>
-              <div className="settings-form">
-                <div className="settings-field">
-                  <label>Base Ref</label>
-                  <input type="text" defaultValue="HEAD~1" readOnly />
+          <div
+            style={{
+              background: "#09090b",
+              border: "1px solid #1f2026",
+              borderRadius: 8,
+              padding: "36px 24px",
+              display: "flex",
+              justifyContent: "space-around",
+              alignItems: "flex-end",
+            }}
+          >
+            {[
+              { size: 16, label: "16px Favicon", desc: "Micro tab icon" },
+              { size: 24, label: "24px Nav", desc: "Sidebar & header" },
+              { size: 32, label: "32px App", desc: "Desktop tray icon" },
+              { size: 48, label: "48px Card", desc: "Card headline" },
+              { size: 64, label: "64px Hero", desc: "Display showcase" },
+            ].map(({ size, label, desc }) => (
+              <div key={size} style={{ textAlign: "center" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                  <LoomSymbol size={size} />
                 </div>
-                <div className="settings-field">
-                  <label>Confidence Threshold</label>
-                  <input type="text" defaultValue="0.75" readOnly />
+                <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, color: "var(--text)" }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
+                  {desc}
                 </div>
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Section 3: Color Tokens */}
+        <section
+          id="colors"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--line)",
+            borderRadius: 10,
+            padding: 28,
+            marginBottom: 48,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Canonical Color Tokens</h2>
+            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--mono)" }}>Click to copy</span>
+          </div>
+          <p style={{ color: "var(--text-2)", fontSize: 13.5, marginBottom: 24 }}>
+            The restrained, dark palette establishing visual hierarchy and semantic feedback across Loom interfaces:
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
+            {colorTokens.map((token) => (
+              <button
+                key={token.hex}
+                type="button"
+                onClick={() => copyToClipboard(token.hex)}
+                style={{
+                  background: "#0c0d10",
+                  border: "1px solid #1e1f24",
+                  borderRadius: 8,
+                  padding: 14,
+                  textAlign: "left",
+                  cursor: "pointer",
+                  transition: "border-color 0.15s ease",
+                }}
+              >
+                <div
+                  style={{
+                    height: 40,
+                    borderRadius: 5,
+                    background: token.hex,
+                    marginBottom: 10,
+                    border: token.hex === "#09090B" || token.hex === "#111215" ? "1px solid #27272a" : undefined,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    paddingRight: 8,
+                  }}
+                >
+                  {copiedHex === token.hex ? (
+                    <Check size={14} style={{ color: token.textDark ? "#09090b" : "#ffffff" }} />
+                  ) : (
+                    <Copy size={12} style={{ color: token.textDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)" }} />
+                  )}
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text)" }}>{token.name}</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--brand-blue)", marginTop: 2 }}>{token.hex}</div>
+                <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 4 }}>{token.role}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Section 4: Production Vectors */}
+        <section
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--line)",
+            borderRadius: 10,
+            padding: 28,
+          }}
+        >
+          <h2 style={{ margin: "0 0 12px 0", fontSize: 18, fontWeight: 600 }}>Canonical Asset Inventory</h2>
+          <p style={{ color: "var(--text-2)", fontSize: 13.5, marginBottom: 20 }}>
+            Clean, scalable vector SVGs and structured design tokens maintained in <code>brand/</code>:
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+            {[
+              { path: "brand/symbol-l-dark.svg", desc: "Dark surface standalone L symbol (64×64)" },
+              { path: "brand/symbol-l-light.svg", desc: "Light surface standalone L symbol (64×64)" },
+              { path: "brand/symbol-app-icon.svg", desc: "Rounded container application icon (64×64)" },
+              { path: "brand/favicon.svg", desc: "Optimized 32×32 browser favicon" },
+              { path: "brand/logo-horizontal-dark.svg", desc: "Primary horizontal logo with wordmark" },
+              { path: "brand/tokens.json", desc: "Standard W3C-compatible design tokens" },
+            ].map((item) => (
+              <div
+                key={item.path}
+                style={{
+                  background: "#0c0d10",
+                  border: "1px solid var(--line-soft)",
+                  borderRadius: 6,
+                  padding: "14px 16px",
+                }}
+              >
+                <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--brand-blue)", fontWeight: 600 }}>
+                  {item.path}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer
+        style={{
+          borderTop: "1px solid var(--line-soft)",
+          padding: "24px",
+          textAlign: "center",
+          fontSize: 12,
+          color: "var(--text-3)",
+          fontFamily: "var(--mono)",
+        }}
+      >
+        LOOM CHANGE-IMPACT INTELLIGENCE · FIGMA MAKE CANONICAL BRAND IDENTITY
+      </footer>
     </div>
   );
 }
-export default App;
