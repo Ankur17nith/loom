@@ -20,8 +20,9 @@ explicitly labeled synthetic fixture so the UI can be previewed without a
 repository; demo data is never presented as engine output.
 
 ```bash
-npm run dev --workspace apps/dashboard
-VITE_LOOM_REPORT_URL=/reports/report.json npm run dev --workspace apps/dashboard
+npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
+VITE_LOOM_REPORT_URL=/reports/report.json npm --workspace apps/dashboard run dev -- --host 127.0.0.1 --port 4175
+npm run qa:dashboard
 ```
 
 It supports overview, graph, findings, finding details, verification artifact
@@ -29,6 +30,12 @@ review, report download, settings, keyboard command navigation, and an
 accessible relationship-list alternative to the graph. The dashboard does not
 execute repository commands, persist report history, authenticate users, or
 apply patches.
+
+`qa:dashboard` uses the project-local Playwright dependency to capture the main
+routes at desktop and narrow viewports, exercise the finding and graph controls,
+and fail on console errors, failed requests, or horizontal overflow. Screenshots
+default to `/tmp/loom-ui-qa`; set `LOOM_UI_QA_DIR` to choose another output
+directory and `LOOM_DASHBOARD_URL` to target a different running server.
 
 The visual system is documented in
 [`design-system/loom/MASTER.md`](design-system/loom/MASTER.md). It uses a

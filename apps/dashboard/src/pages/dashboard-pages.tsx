@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, Check, ChevronRight, CircleDot, Clock3, Code2, Download, FileCheck2, Filter, GitBranch, Info, RefreshCw, Search, ShieldAlert, Sparkles, Terminal, X, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, ChevronRight, CircleOff, Clock3, Code2, Download, FileCheck2, FileText, Filter, GitBranch, ListFilter, RefreshCw, Search, ShieldAlert, Terminal, TriangleAlert, X, XCircle } from "lucide-react";
 import { DeferredGraphView } from "../components/deferred-graph.js";
-import { Button, Confidence, CopyButton, EmptyState, ErrorState, FindingRow, InlineNotice, PageHeader, Panel, SeverityBadge, StatusBadge, cn } from "../components/ui.js";
-import { filterFindings, formatConfidence, formatReportDate, getFinding, type FindingSeverity, type FindingStatus, type LoomReport } from "../lib/report.js";
+import { FindingInspector } from "../components/evidence-inspector.js";
+import { Button, EmptyState, ErrorState, FindingRow, InlineNotice, PageHeader, SeverityBadge, cn } from "../components/ui.js";
+import { filterFindings, formatConfidence, formatReportDate, getFinding, getFindingGraphScope, reportStats, type Finding, type FindingSeverity, type FindingStatus, type LoomReport } from "../lib/report.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 
 function downloadJson(value: unknown, filename: string): void {
@@ -16,43 +17,78 @@ function downloadJson(value: unknown, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+function sortFindings(findings: LoomReport["findings"], sort: "risk" | "confidence" | "location") {
+  return [...findings].sort((left, right) => {
+    if (sort === "confidence") return right.confidence - left.confidence;
+    if (sort === "location") return `${left.location.file}:${left.location.line}`.localeCompare(`${right.location.file}:${right.location.line}`);
+    const severity = { critical: 4, high: 3, medium: 2, low: 1 };
+    return severity[right.severity] - severity[left.severity] || right.confidence - left.confidence;
+  });
+}
+
 export function OverviewPage({ report }: { report: LoomReport }) {
   const navigate = useNavigate();
-  const urgent = report.findings.filter((finding) => finding.severity === "critical" || finding.severity === "high").slice(0, 3);
-  const passedChecks = report.checks.filter((check) => check.status === "passed").length;
-  const affectedNodes = new Set(report.findings.flatMap((finding) => finding.affectedNodeIds));
-  const averageConfidence = report.findings.length ? report.findings.reduce((sum, finding) => sum + finding.confidence, 0) / report.findings.length : 0;
-  const verificationLabel = report.summary.verification === "passing" ? "Passing" : report.summary.verification === "partial" ? "Partial" : report.summary.verification === "failed" ? "Failed" : "Not run";
+  const stats = reportStats(report);
+  const urgent = [...report.findings].sort((left, right) => {
+    const severity = { critical: 4, high: 3, medium: 2, low: 1 };
+    return severity[right.severity] - severity[left.severity] || right.confidence - left.confidence;
+  });
+  const primary = urgent[0];
+  const checks = summarizeChecks(report);
   const isDemo = report.reportId.startsWith("demo-");
 
-  return <div className="page-stack">
-    <PageHeader eyebrow="Repository health" title="Overview" description={`${report.repository.branch} · generated ${formatReportDate(report.generatedAt)}`} actions={<><Button variant="secondary" onClick={() => navigate("/reports")}><FileCheck2 size={15} aria-hidden="true" /> Report details</Button><Button variant="primary" onClick={() => navigate("/graph")}><GitBranch size={15} aria-hidden="true" /> Explore graph</Button></>} />
-    {isDemo && <InlineNotice>Preview data is synthetic and labeled. Set <code>VITE_LOOM_REPORT_URL</code> to load a real Loom report artifact.</InlineNotice>}
-    <section className="analysis-banner" aria-label="Analysis context">
-      <div className="analysis-banner-mark" aria-hidden="true"><GitBranch size={19} /></div>
-      <div className="analysis-banner-copy"><span className="eyebrow">Change surface</span><strong>{report.summary.filesChanged} files compared against <code>{report.repository.baseCommit.slice(0, 7)}</code></strong><span>Evidence is static unless an attached check says otherwise.</span></div>
-      <div className="analysis-banner-meta"><span><span className="status-pulse" aria-hidden="true" />{verificationLabel}</span><code>{report.repository.commit.slice(0, 7)}</code></div>
+  return <div className="page-stack overview-page">
+    <PageHeader eyebrow="Change review" title="Review the blast radius" description={`${report.repository.name} · ${report.repository.branch} · compared with ${report.repository.baseCommit.slice(0, 7)}`} actions={<><Button variant="secondary" onClick={() => navigate("/reports")}><FileText size={15} /> Report artifact</Button><Button variant="primary" onClick={() => navigate(primary ? `/findings/${primary.id}` : "/findings")}>{primary ? "Review highest risk" : "Review findings"}<ArrowUpRight size={15} /></Button></>} />
+    {isDemo && <div className="source-strip"><CircleOff size={15} /><span>Preview report</span><strong>Synthetic fixture</strong><span>·</span><span>Set <code>VITE_LOOM_REPORT_URL</code> to load a validated artifact.</span></div>}
+
+    <section className="review-hero" aria-label="Review summary">
+      <div className="review-hero-copy"><span className="section-kicker">Priority review</span><h2>{primary ? primary.title : "No findings need review"}</h2><p>{primary ? primary.summary : "The current report has no findings. Review the report artifact for provenance and attached checks."}</p>{primary && <div className="hero-actions"><Button variant="primary" onClick={() => navigate(`/findings/${primary.id}`)}><ShieldAlert size={15} /> Open evidence</Button><button className="quiet-link" type="button" onClick={() => navigate(`/graph?finding=${primary.id}`)}><GitBranch size={14} /> Trace in graph</button></div>}</div>
+      <div className="review-hero-status"><div className="hero-status-label"><span className={cn("status-pip", `status-pip-${stats.verification}`)} />Verification gate</div><strong>{verificationLabel(stats.verification)}</strong><span>{checks.passed} passed · {checks.incomplete} incomplete · {checks.failed} failed</span><div className="hero-status-rule"><span style={{ width: `${stats.checksTotal ? `${Math.round((stats.checksPassed / stats.checksTotal) * 100)}%` : "0%"}` }} /></div></div>
     </section>
-    <div className="metric-strip">
-      <Metric label="Files changed" value={String(report.summary.filesChanged)} detail={`${report.nodes.filter((node) => node.changed).length} graph nodes`} tone="blue" />
-      <Metric label="Breaking findings" value={String(report.summary.highRisk)} detail="Requires review" tone="red" />
-      <Metric label="Affected surface" value={String(affectedNodes.size)} detail="Nodes in evidence paths" tone="amber" />
-      <Metric label="Checks passed" value={`${passedChecks}/${report.checks.length}`} detail={verificationLabel} tone="green" />
+
+    <section className="review-facts" aria-label="Change surface">
+      <Fact label="Findings" value={String(stats.findings)} note={`${stats.highRisk} high-risk`} tone="danger" />
+      <Fact label="Changed files" value={String(stats.filesChanged)} note={`${stats.contractChanges} contract change${stats.contractChanges === 1 ? "" : "s"}`} tone="blue" />
+      <Fact label="Affected nodes" value={String(stats.affectedNodes)} note="Evidence-linked surface" tone="amber" />
+      <Fact label="Confidence" value={formatConfidence(averageConfidence(report))} note="Static evidence weight" tone="muted" />
+    </section>
+
+    <div className="overview-columns">
+      <section className="section-block review-queue-block"><SectionHeading eyebrow="Start here" title="Review queue" action={<Link className="inline-link" to="/findings">View all <ArrowUpRight size={13} /></Link>} /><div className="review-queue">{urgent.slice(0, 4).map((finding) => <button className="queue-item" type="button" key={finding.id} onClick={() => navigate(`/findings/${finding.id}`)}><span className={cn("queue-severity", `queue-severity-${finding.severity}`)} /><span className="queue-copy"><strong>{finding.title}</strong><span><code>{finding.location.file}:{finding.location.line}</code><span>{finding.category}</span></span></span><span className="queue-confidence">{formatConfidence(finding.confidence)}</span><ChevronRight size={16} /></button>)}</div>{urgent.length === 0 && <EmptyState icon={<CheckCircle2 size={20} />} title="Queue is clear" description="No findings are attached to this report." />}</section>
+      <section className="section-block change-block"><SectionHeading eyebrow="Change surface" title="What moved" action={<Link className="inline-link" to="/graph">Open graph <ArrowUpRight size={13} /></Link>} /><div className="change-lines"><ChangeLine label="Contracts" value={stats.contractChanges} detail="changed declarations" icon={<Code2 size={16} />} /><ChangeLine label="Consumers" value={stats.affectedNodes} detail="nodes in evidence paths" icon={<GitBranch size={16} />} /><ChangeLine label="Checks" value={stats.checksTotal} detail={stats.checksTotal ? `${stats.checksPassed} passing` : "not run"} icon={<FileCheck2 size={16} />} /></div><div className="change-commit"><span>Report generated</span><code>{formatReportDate(report.generatedAt)}</code><span>at</span><code>{report.repository.commit.slice(0, 7)}</code></div></section>
     </div>
-    <div className="overview-grid">
-      <Panel className="panel-graph overview-graph-panel"><div className="panel-heading"><div><p className="eyebrow">Dependency view</p><h2>Where the change travels</h2><p>{report.nodes.length} nodes · {report.edges.length} relationships</p></div><Link className="text-link" to="/graph">Open graph <ArrowUpRight size={14} aria-hidden="true" /></Link></div><DeferredGraphView report={report} compact /></Panel>
-      <Panel className="triage-panel"><div className="panel-heading"><div><p className="eyebrow">Triage queue</p><h2>Start with the sharp edges</h2><p>Highest-impact findings first.</p></div><Link className="text-link" to="/findings">All findings <ArrowUpRight size={14} aria-hidden="true" /></Link></div><div className="compact-findings">{urgent.map((finding) => <button key={finding.id} className="compact-finding" onClick={() => navigate(`/findings/${finding.id}`)}><SeverityBadge severity={finding.severity} /><span><strong>{finding.title}</strong><code>{finding.location.file}:{finding.location.line}</code></span><ChevronRight size={14} aria-hidden="true" /></button>)}</div>{urgent.length === 0 && <EmptyState title="Queue is clear" description="There are no high-risk findings in this report." />}</Panel>
-    </div>
-    <Panel className="signals-panel"><div className="panel-heading"><div><p className="eyebrow">Evidence summary</p><h2>What Loom can support</h2></div><span className="panel-meta"><Clock3 size={14} aria-hidden="true" /> Compared with <code>{report.repository.baseCommit.slice(0, 7)}</code></span></div><div className="signal-grid"><Signal label="Contract surface" value={String(report.contractChanges.length)} detail="declarations changed" tone="blue" /><Signal label="Downstream paths" value={String(affectedNodes.size)} detail="consumers traced" tone="purple" /><Signal label="Recorded checks" value={String(report.checks.length)} detail="attached to report" tone="green" /><Signal label="Confidence" value={formatConfidence(averageConfidence)} detail="static evidence weight" tone="amber" /></div></Panel>
+
+    <section className="section-block overview-graph"><SectionHeading eyebrow="Context, not decoration" title="Impact preview" action={<Link className="inline-link" to="/graph">Use full workspace <ArrowUpRight size={13} /></Link>} /><div className="overview-graph-wrap"><DeferredGraphView report={report} compact /></div></section>
+    <section className="verification-strip"><div><span className="section-kicker">Attached verification</span><strong>{verificationLabel(stats.verification)}</strong><span>{stats.checksTotal ? `${stats.checksPassed} of ${stats.checksTotal} checks passed` : "No checks were recorded"}</span></div><Link className="button button-secondary button-sm button-as-link" to="/verification">Inspect checks <ChevronRight size={14} /></Link></section>
   </div>;
 }
 
-function Metric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
-  return <div className="metric"><span className={cn("metric-mark", `metric-${tone}`)} aria-hidden="true" /><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></div>;
+function Fact({ label, value, note, tone }: { label: string; value: string; note: string; tone: string }) {
+  return <div className="review-fact"><span className={cn("fact-mark", `fact-mark-${tone}`)} /><div><span>{label}</span><strong>{value}</strong><small>{note}</small></div></div>;
 }
 
-function Signal({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) {
-  return <div className="signal"><span className={cn("signal-rule", `signal-${tone}`)} aria-hidden="true" /><div><strong>{value}</strong><span>{label}</span><small>{detail}</small></div></div>;
+function ChangeLine({ label, value, detail, icon }: { label: string; value: number; detail: string; icon: React.ReactNode }) {
+  return <div className="change-line"><span className="change-icon">{icon}</span><div><strong>{label}</strong><small>{detail}</small></div><b>{value}</b></div>;
+}
+
+function SectionHeading({ eyebrow, title, action, count }: { eyebrow: string; title: string; action?: React.ReactNode; count?: number }) {
+  return <div className="section-heading"><div><span className="section-kicker">{eyebrow}</span><h2>{title}</h2></div>{count !== undefined ? <span className="section-count">{count}</span> : action}</div>;
+}
+
+function averageConfidence(report: LoomReport) {
+  return report.findings.length ? report.findings.reduce((total, finding) => total + finding.confidence, 0) / report.findings.length : 0;
+}
+
+function summarizeChecks(report: LoomReport) {
+  return {
+    passed: report.checks.filter((check) => check.status === "passed").length,
+    failed: report.checks.filter((check) => check.status === "failed").length,
+    incomplete: report.checks.filter((check) => check.status === "inconclusive" || check.status === "skipped" || check.status === "running").length,
+  };
+}
+
+function verificationLabel(status: ReturnType<typeof reportStats>["verification"]) {
+  return status === "passing" ? "Passing" : status === "failed" ? "Failed" : status === "partial" ? "Partial" : "Not run";
 }
 
 export function GraphPage({ report }: { report: LoomReport }) {
@@ -61,19 +97,38 @@ export function GraphPage({ report }: { report: LoomReport }) {
   const selectedNodeId = useDashboardStore((state) => state.selectedNodeId);
   const selectedNode = report.nodes.find((node) => node.id === selectedNodeId);
   const selectNode = useDashboardStore((state) => state.selectNode);
+  const findingScope = finding ? getFindingGraphScope(report, finding) : undefined;
   const affected = finding?.affectedNodeIds.map((id) => report.nodes.find((node) => node.id === id)).filter((node): node is LoomReport["nodes"][number] => Boolean(node)) ?? [];
-  return <div className="page-stack graph-page"><PageHeader eyebrow="Investigation workbench" title="Impact graph" description="Trace changed symbols through evidence-backed consumers and tests." actions={<><Button variant="secondary" onClick={() => selectNode(undefined)}><RefreshCw size={15} aria-hidden="true" /> Reset selection</Button><Button variant="primary" onClick={() => downloadJson({ nodes: report.nodes, edges: report.edges }, "loom-graph.json")}><Download size={15} aria-hidden="true" /> Export graph</Button></>} />{finding && <InlineNotice tone="warning">Investigating <strong>{finding.title}</strong>. The first affected node is selected.</InlineNotice>}<div className="graph-layout"><Panel className="graph-panel"><DeferredGraphView report={report} focusNodeId={affected[0]?.id} /></Panel><Panel className="graph-inspector"><div className="panel-heading"><div><p className="eyebrow">Node inspector</p><h2>{selectedNode ? selectedNode.label : "Select a node"}</h2></div>{selectedNode && <button className="icon-button" aria-label="Clear graph selection" onClick={() => selectNode(undefined)}><XCircle size={16} /></button>}</div>{selectedNode ? <NodeInspector report={report} nodeId={selectedNode.id} /> : <EmptyState icon={<GitBranch size={20} />} title="Follow the path" description="Select a node in the graph to inspect its file, relationships, and related findings." />}</Panel></div></div>;
+
+  return <div className="page-stack graph-page">
+    <PageHeader eyebrow="Investigation workspace" title="Impact graph" description={finding ? `Tracing the evidence path for ${finding.title}` : "Move through changed symbols, consumers, and tests without losing the report context."} actions={<><Button variant="secondary" onClick={() => selectNode(undefined)}><RefreshCw size={15} /> Reset view</Button><Button variant="primary" onClick={() => downloadJson({ nodes: report.nodes, edges: report.edges }, "loom-graph.json")}><Download size={15} /> Export graph</Button></>} />
+    {finding && <div className="context-strip"><span className="context-strip-dot" /><strong>Finding scope</strong><span>{findingScope?.nodeIds.size ?? affected.length} evidence-linked nodes</span><Link to={`/findings/${finding.id}`}>Open finding <ArrowUpRight size={13} /></Link></div>}
+    <div className="graph-workspace"><section className="graph-stage"><DeferredGraphView report={report} focusNodeId={affected[0]?.id} scope={findingScope} /></section><GraphInspector report={report} nodeId={selectedNode?.id} finding={finding} onClear={() => selectNode(undefined)} /></div>
+  </div>;
 }
 
-function NodeInspector({ report, nodeId }: { report: LoomReport; nodeId: string }) {
+function GraphInspector({ report, nodeId, finding, onClear }: { report: LoomReport; nodeId?: string; finding?: Finding; onClear: () => void }) {
   const node = report.nodes.find((item) => item.id === nodeId);
-  if (!node) return <ErrorState title="Node unavailable" description="This node is not present in the loaded graph." />;
-  const relatedFindings = report.findings.filter((finding) => finding.affectedNodeIds.includes(nodeId));
-  const relationships = report.edges.filter((edge) => edge.source === nodeId || edge.target === nodeId);
-  return <div className="inspector-content"><div className="node-path"><Code2 size={15} aria-hidden="true" /><code>{node.path}</code><span className="node-kind">{node.kind}</span></div><p className="muted-line">{node.lines ? `Lines ${node.lines} · ` : ""}{node.changed ? "changed in this report" : "context node"}</p><div className="inspector-section"><h3>Relationships <span>{relationships.length}</span></h3>{relationships.length ? relationships.map((edge) => { const otherId = edge.source === nodeId ? edge.target : edge.source; const other = report.nodes.find((item) => item.id === otherId); return <div className="relationship" key={edge.id}><span className="relationship-kind">{edge.kind}</span><span>{other?.label ?? otherId}</span><small>{edge.evidence}</small></div>; }) : <p className="muted-line">No relationships are attached to this node.</p>}</div>{relatedFindings.length > 0 && <div className="inspector-section"><h3>Related findings <span>{relatedFindings.length}</span></h3>{relatedFindings.map((related) => <Link className="inspector-finding" to={`/findings/${related.id}`} key={related.id}><SeverityBadge severity={related.severity} /><span>{related.title}</span><ChevronRight size={14} aria-hidden="true" /></Link>)}</div>}</div>;
+  const relatedFindings = node ? report.findings.filter((candidate) => candidate.affectedNodeIds.includes(node.id)) : [];
+  const relationships = node ? report.edges.filter((edge) => edge.source === node.id || edge.target === node.id) : [];
+  return <aside className="graph-inspector-pane" aria-label="Node inspector"><div className="graph-inspector-head"><div><span className="section-kicker">Node inspector</span><h2>{node ? node.label : finding ? "Evidence path" : "Choose a node"}</h2></div>{node && <button className="icon-button" type="button" aria-label="Clear node selection" onClick={onClear}><X size={16} /></button>}</div>{node ? <div className="graph-inspector-scroll"><div className="node-identity"><span className="node-kind-label">{node.kind}</span><code>{node.path}</code><span>{node.changed ? "Changed in this report" : "Context node"}</span></div><GraphSection title="Relationships" count={relationships.length}>{relationships.length ? relationships.map((edge) => { const otherId = edge.source === node.id ? edge.target : edge.source; const other = report.nodes.find((item) => item.id === otherId); return <div className="relationship-row" key={edge.id}><span className="relationship-arrow">{edge.source === node.id ? "→" : "←"}</span><div><strong>{other?.label ?? otherId}</strong><span>{edge.kind}</span><small>{edge.evidence}</small></div></div>; }) : <p className="muted-copy">No relationships are attached to this node.</p>}</GraphSection>{relatedFindings.length > 0 && <GraphSection title="Related findings" count={relatedFindings.length}>{relatedFindings.map((related) => <Link className="graph-related-finding" to={`/findings/${related.id}`} key={related.id}><SeverityBadge severity={related.severity} /><span>{related.title}</span><ChevronRight size={14} /></Link>)}</GraphSection>}</div> : <div className="graph-empty"><GitBranch size={22} /><h3>{finding ? "Select a node in the evidence path" : "Follow a dependency"}</h3><p>{finding ? "The graph is scoped to the selected finding. Click a node to inspect relationships and related findings." : "Select a node to inspect its source location, relationships, and findings."}</p></div>}</aside>;
+}
+
+function GraphSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  return <section className="graph-inspector-section"><div className="graph-section-title"><h3>{title}</h3><span>{count}</span></div>{children}</section>;
 }
 
 export function FindingsPage({ report }: { report: LoomReport }) {
+  return <FindingWorkspace report={report} />;
+}
+
+export function FindingDetailPage({ report }: { report: LoomReport }) {
+  const { findingId } = useParams();
+  if (!getFinding(report, findingId)) return <div className="page-stack"><PageHeader eyebrow="Evidence review" title="Finding not found" description="This finding is not present in the loaded report." /><ErrorState title="Finding unavailable" description="The link may refer to a different report version. Return to the findings list and choose a current finding." /><Link className="button button-secondary button-md button-as-link" to="/findings"><ArrowLeft size={15} /> Back to findings</Link></div>;
+  return <FindingWorkspace report={report} selectedId={findingId} />;
+}
+
+function FindingWorkspace({ report, selectedId }: { report: LoomReport; selectedId?: string }) {
   const navigate = useNavigate();
   const query = useDashboardStore((state) => state.findingQuery);
   const severity = useDashboardStore((state) => state.severityFilter);
@@ -81,32 +136,83 @@ export function FindingsPage({ report }: { report: LoomReport }) {
   const setQuery = useDashboardStore((state) => state.setFindingQuery);
   const setSeverity = useDashboardStore((state) => state.setSeverityFilter);
   const setStatus = useDashboardStore((state) => state.setStatusFilter);
-  const findings = useMemo(() => filterFindings(report.findings, { query, severity, status }), [report.findings, query, severity, status]);
-  return <div className="page-stack"><PageHeader eyebrow="Evidence review" title="Findings" description={`${findings.length} of ${report.findings.length} report findings`} actions={<Button variant="secondary" onClick={() => downloadJson(findings, "loom-findings.json")}><Download size={15} aria-hidden="true" /> Export findings</Button>} /><Panel className="filters-panel"><div className="search-field"><Search size={16} aria-hidden="true" /><label className="sr-only" htmlFor="finding-search">Search findings</label><input id="finding-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search findings, files, categories…" />{query && <button aria-label="Clear search" onClick={() => setQuery("")}><X size={15} /></button>}</div><div className="filter-group"><Filter size={14} aria-hidden="true" /><label htmlFor="severity-filter">Severity</label><select id="severity-filter" value={severity} onChange={(event) => setSeverity(event.target.value as FindingSeverity | "all")}><option value="all">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select><label htmlFor="status-filter">Status</label><select id="status-filter" value={status} onChange={(event) => setStatus(event.target.value as FindingStatus | "all")}><option value="all">All statuses</option><option value="open">Open</option><option value="reviewed">Reviewed</option><option value="resolved">Resolved</option></select></div></Panel><div className="findings-table-heading"><span>{findings.length} findings</span><span>Severity · evidence · verification</span></div><div className="finding-list">{findings.map((finding) => <FindingRow key={finding.id} finding={finding} onOpen={() => navigate(`/findings/${finding.id}`)} />)}</div>{findings.length === 0 && <EmptyState icon={<Search size={20} />} title="No findings match" description="Try clearing a filter or searching for a different file, category, or phrase." action={<Button variant="secondary" onClick={() => { setQuery(""); setSeverity("all"); setStatus("all"); }}>Clear filters</Button>} />}</div>;
-}
+  const selectedFindingId = useDashboardStore((state) => state.selectedFindingId);
+  const selectFinding = useDashboardStore((state) => state.selectFinding);
+  const [sort, setSort] = useState<"risk" | "confidence" | "location">("risk");
+  const filteredFindings = useMemo(() => sortFindings(filterFindings(report.findings, { query, severity, status }), sort), [report.findings, query, severity, status, sort]);
+  const activeId = selectedId ?? selectedFindingId ?? filteredFindings[0]?.id;
+  const finding = activeId ? getFinding(report, activeId) : undefined;
+  const openFinding = (id: string) => { selectFinding(id); navigate(`/findings/${id}`); };
 
-export function FindingDetailPage({ report }: { report: LoomReport }) {
-  const { findingId } = useParams();
-  const navigate = useNavigate();
-  const finding = getFinding(report, findingId);
-  if (!finding) return <div className="page-stack"><PageHeader eyebrow="Evidence review" title="Finding not found" description="This finding is not present in the loaded report." /><ErrorState title="Finding unavailable" description="The link may refer to a different report version. Return to the findings list and choose a current finding." /><Link className="button button-secondary button-md button-as-link" to="/findings"><ArrowLeft size={15} aria-hidden="true" /> Back to findings</Link></div>;
-  const affectedNodes = finding.affectedNodeIds.map((id) => report.nodes.find((node) => node.id === id)).filter((node): node is LoomReport["nodes"][number] => Boolean(node));
-  return <div className="page-stack"><button className="back-link" onClick={() => navigate(-1)}><ArrowLeft size={15} aria-hidden="true" /> Findings</button><PageHeader eyebrow={finding.category} title={finding.title} description={finding.summary} actions={<><StatusBadge status={finding.status} /><SeverityBadge severity={finding.severity} /></>} /><div className="detail-grid"><div className="detail-main"><Panel className="evidence-panel"><div className="detail-meta"><div><span className="eyebrow">Changed location</span><div className="location-actions"><button className="code-location" onClick={() => navigate(`/graph?finding=${finding.id}`)}><Code2 size={15} aria-hidden="true" /><code>{finding.location.file}:{finding.location.line}</code><ArrowUpRight size={14} aria-hidden="true" /></button><CopyButton label="Copy location" value={`${finding.location.file}:${finding.location.line}`} /></div></div><Confidence finding={finding} /></div><div className="evidence-heading"><div><span className="evidence-kicker">Static evidence</span><h2>Why Loom flagged this</h2></div><p>Every claim stays attached to a source location and relationship path.</p></div><div className="evidence-list">{finding.evidence.map((item, index) => <div className="evidence-item" key={`${item.label}-${index}`}><div className="evidence-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</div><div><strong>{item.label}</strong><p>{item.value}</p><code>{item.source}</code></div></div>)}</div></Panel><Panel className="recommendation-panel"><div className="panel-heading"><div><p className="eyebrow">Next action</p><h2>Keep the correction reviewable</h2></div><Sparkles size={18} className="panel-icon" aria-hidden="true" /></div><p className="recommendation">{finding.recommendedAction}</p><div className="detail-footer"><span>Introduced in <code>{finding.introducedIn}</code></span><Button variant="primary" onClick={() => navigate(`/graph?finding=${finding.id}`)}><GitBranch size={15} aria-hidden="true" /> Show in graph</Button></div></Panel></div><aside className="detail-aside"><Panel><div className="panel-heading"><div><p className="eyebrow">Impact surface</p><h2>Affected consumers</h2></div><span className="count-pill">{affectedNodes.length}</span></div>{affectedNodes.length ? <div className="affected-list">{affectedNodes.map((node) => <button key={node.id} onClick={() => navigate(`/graph?finding=${finding.id}`)}><span className="affected-icon" aria-hidden="true"><Code2 size={13} /></span><span><strong>{node.label}</strong><small>{node.path}</small></span><ChevronRight size={14} aria-hidden="true" /></button>)}</div> : <p className="muted-line">This report has no embedded graph. Re-run with <code>loom report</code> to attach the path.</p>}</Panel><Panel><div className="panel-heading"><div><p className="eyebrow">Interpretation</p><h2>What is actually known</h2></div><Info size={18} className="panel-icon" aria-hidden="true" /></div><div className="interpretation-list"><div><span className="interpretation-marker marker-blue" />Static relationship <strong>{finding.confidence}</strong></div><div><span className="interpretation-marker marker-amber" />Uncertainty <strong>{finding.uncertainty.length ? "Present" : "None recorded"}</strong></div><div><span className="interpretation-marker marker-green" />Runtime proof <strong>Not supplied</strong></div></div>{finding.uncertainty.length > 0 && <div className="uncertainty-box">{finding.uncertainty.map((item) => <p key={item}>{item}</p>)}</div>}</Panel></aside></div></div>;
+  return <div className="page-stack findings-page">
+    <PageHeader eyebrow="Evidence review" title="Findings" description="Start with what can break, then inspect the evidence that supports it." actions={<Button variant="secondary" onClick={() => downloadJson(filteredFindings, "loom-findings.json")}><Download size={15} /> Export visible findings</Button>} />
+    <div className="findings-workspace">
+      <section className="finding-list-pane" aria-label="Finding queue">
+        <div className="finding-list-toolbar"><div><span className="section-kicker">Review queue</span><strong>{filteredFindings.length} findings</strong></div><span className="toolbar-count">{report.findings.length} total</span></div>
+        <div className="finding-filters"><div className="search-field"><Search size={16} /><label className="sr-only" htmlFor="finding-search">Search findings</label><input id="finding-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, files, uncertainty…" />{query && <button type="button" aria-label="Clear search" onClick={() => setQuery("")}><X size={15} /></button>}</div><div className="filter-line"><Filter size={14} /><label htmlFor="severity-filter">Severity</label><select id="severity-filter" value={severity} onChange={(event) => setSeverity(event.target.value as FindingSeverity | "all")}><option value="all">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select><label htmlFor="status-filter">Status</label><select id="status-filter" value={status} onChange={(event) => setStatus(event.target.value as FindingStatus | "all")}><option value="all">All statuses</option><option value="open">Open</option><option value="reviewed">Reviewed</option><option value="resolved">Resolved</option></select><label htmlFor="sort-findings">Sort</label><select id="sort-findings" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}><option value="risk">Risk first</option><option value="confidence">Confidence</option><option value="location">Location</option></select></div></div>
+        <div className="finding-list-meta"><span><ListFilter size={13} />{query || severity !== "all" || status !== "all" ? "Filtered results" : "All report findings"}</span><span>Severity · confidence</span></div>
+        <div className="finding-list">{filteredFindings.map((item) => <FindingRow key={item.id} finding={item} selected={item.id === finding?.id} onOpen={() => openFinding(item.id)} />)}</div>
+        {filteredFindings.length === 0 && <EmptyState icon={<Search size={20} />} title="No findings match" description="Clear a filter or search for a different file, category, or uncertainty note." action={<Button variant="secondary" size="sm" onClick={() => { setQuery(""); setSeverity("all"); setStatus("all"); }}>Clear filters</Button>} />}
+      </section>
+      {finding ? <FindingInspector report={report} finding={finding} onOpenGraph={() => navigate(`/graph?finding=${finding.id}`)} /> : <aside className="inspector-pane inspector-empty"><EmptyState icon={<ShieldAlert size={22} />} title="Select a finding" description="Choose a finding from the review queue to inspect its evidence and affected surface." /></aside>}
+    </div>
+  </div>;
 }
 
 export function VerificationPage({ report }: { report: LoomReport }) {
-  const passed = report.checks.filter((check) => check.status === "passed").length;
-  const ratio = report.checks.length ? Math.round((passed / report.checks.length) * 100) : 0;
-  const summary = report.checks.length ? `${passed} passed · ${report.checks.length - passed} not passing` : "No verification results were recorded";
-  return <div className="page-stack"><PageHeader eyebrow="Evidence status" title="Verification" description="Checks attached to this report and their captured output." actions={<Button variant="secondary" disabled title="Verification runs must be approved and executed by the Loom CLI"><RefreshCw size={15} aria-hidden="true" /> Re-run checks</Button>} /><InlineNotice>Verification results are read from the report artifact. The dashboard never executes repository commands.</InlineNotice><div className="verification-summary"><div><span className="verification-score">{passed}/{report.checks.length}</span><span>checks passed</span></div><div className="verification-bar" role="progressbar" aria-valuenow={ratio} aria-valuemin={0} aria-valuemax={100} aria-label="Checks passed"><span style={{ width: `${ratio}%` }} /></div><span className="muted-line">{summary}</span></div><div className="check-list">{report.checks.length ? report.checks.map((check) => <Panel className="check-card" key={check.id}><div className={cn("check-status-icon", `check-${check.status}`)}>{check.status === "passed" ? <Check size={17} aria-hidden="true" /> : check.status === "skipped" ? <Clock3 size={17} aria-hidden="true" /> : <XCircle size={17} aria-hidden="true" />}</div><div className="check-main"><div><h2>{check.name}</h2><p><Terminal size={13} aria-hidden="true" />{check.command}</p></div><StatusCheck status={check.status} /></div><div className="check-output"><code>{check.output ?? "No output recorded"}</code>{check.durationMs !== undefined && <span>{(check.durationMs / 1000).toFixed(1)}s</span>}</div></Panel>) : <EmptyState icon={<FileCheck2 size={20} />} title="Verification not run" description="Run an approved check through the Loom CLI and attach the resulting report to review evidence here." />}</div></div>;
+  const stats = reportStats(report);
+  const counts = {
+    passed: report.checks.filter((check) => check.status === "passed").length,
+    failed: report.checks.filter((check) => check.status === "failed").length,
+    incomplete: report.checks.filter((check) => check.status === "inconclusive" || check.status === "skipped" || check.status === "running").length,
+  };
+  return <div className="page-stack verification-page">
+    <PageHeader eyebrow="Artifact checks" title="Verification" description="Read-only results attached to this Loom report. The browser never executes repository commands." actions={<Button variant="secondary" disabled title="Checks must be approved and executed by the Loom CLI"><RefreshCw size={15} /> Re-run checks</Button>} />
+    <div className={cn("verification-gate", `verification-gate-${stats.verification}`)}><div className="gate-symbol">{stats.verification === "passing" ? <CheckCircle2 size={22} /> : stats.verification === "failed" ? <XCircle size={22} /> : stats.verification === "partial" ? <TriangleAlert size={22} /> : <CircleOff size={22} />}</div><div><span className="section-kicker">Overall gate</span><h2>{verificationLabel(stats.verification)}</h2><p>{stats.checksTotal ? `${counts.passed} passed, ${counts.failed} failed, ${counts.incomplete} incomplete` : "No checks were recorded for this artifact."}</p></div><div className="gate-progress"><strong>{counts.passed}/{stats.checksTotal}</strong><span>passed</span><div><i style={{ width: `${stats.checksTotal ? `${Math.round((counts.passed / stats.checksTotal) * 100)}%` : "0%"}` }} /></div></div></div>
+    <section className="verification-counts"><VerificationCount label="Passed" value={counts.passed} tone="passed" icon={<Check size={15} />} /><VerificationCount label="Failed" value={counts.failed} tone="failed" icon={<XCircle size={15} />} /><VerificationCount label="Inconclusive" value={report.checks.filter((check) => check.status === "inconclusive").length} tone="inconclusive" icon={<TriangleAlert size={15} />} /><VerificationCount label="Skipped / running" value={report.checks.filter((check) => check.status === "skipped" || check.status === "running").length} tone="skipped" icon={<Clock3 size={15} />} /></section>
+    {report.checks.length ? <section className="verification-list"><div className="section-heading"><div><span className="section-kicker">Captured output</span><h2>Checks in this artifact</h2></div><span className="section-count">{report.checks.length}</span></div>{report.checks.map((check) => <VerificationRow check={check} key={check.id} />)}</section> : <section className="section-block"><EmptyState icon={<FileCheck2 size={22} />} title="Verification not run" description="Run an approved check through the Loom CLI and attach the resulting report to see command output here." /></section>}
+  </div>;
 }
 
-function StatusCheck({ status }: { status: string }) { return <span className={cn("check-label", `check-label-${status}`)}>{status === "passed" ? "Passed" : status === "skipped" ? "Skipped" : status}</span>; }
+function VerificationCount({ label, value, tone, icon }: { label: string; value: number; tone: string; icon: React.ReactNode }) {
+  return <div className={cn("verification-count", `verification-count-${tone}`)}><span>{icon}</span><strong>{value}</strong><small>{label}</small></div>;
+}
+
+function VerificationRow({ check }: { check: LoomReport["checks"][number] }) {
+  const [open, setOpen] = useState(check.status === "failed" || check.status === "inconclusive");
+  const icon = check.status === "passed" ? <Check size={17} /> : check.status === "failed" ? <XCircle size={17} /> : check.status === "inconclusive" ? <TriangleAlert size={17} /> : <Clock3 size={17} />;
+  return <article className={cn("verification-row", `verification-row-${check.status}`)}><div className="verification-row-status">{icon}</div><div className="verification-row-main"><div className="verification-row-title"><div><h3>{check.name}</h3><code><Terminal size={13} />{check.command}</code></div><StatusCheck status={check.status} /></div><div className="verification-row-meta"><span>{check.durationMs !== undefined ? `${(check.durationMs / 1000).toFixed(1)}s` : "Duration unavailable"}</span>{check.reason && <span className="verification-reason">{check.reason}</span>}<button className="text-button" type="button" onClick={() => setOpen((value) => !value)}>{open ? "Hide output" : "Show output"}<ChevronRight size={14} className={cn(open && "rotate-90")} /></button></div>{open && <pre className="verification-output"><code>{check.output ?? "No output recorded"}</code></pre>}</div></article>;
+}
+
+function StatusCheck({ status }: { status: string }) {
+  const label = status === "passed" ? "Passed" : status === "failed" ? "Failed" : status === "inconclusive" ? "Inconclusive" : status === "running" ? "Running" : "Skipped";
+  return <span className={cn("check-status", `check-status-${status}`)}>{label}</span>;
+}
 
 export function ReportsPage({ report }: { report: LoomReport }) {
-  return <div className="page-stack"><PageHeader eyebrow="Artifacts" title="Reports" description="Versioned Loom report artifacts available to this workspace." actions={<Button variant="primary" onClick={() => downloadJson(report, `${report.repository.name}-loom-report.json`)}><Download size={15} aria-hidden="true" /> Download JSON</Button>} /><InlineNotice>Only the currently loaded report is available. Historical report persistence is supplied by the host integration.</InlineNotice><Panel className="report-card"><div className="report-card-icon" aria-hidden="true"><FileCheck2 size={20} /></div><div className="report-card-body"><div className="report-card-title"><div><span className="eyebrow">Current report</span><h2>{report.repository.name} · {report.repository.branch}</h2></div><span className="report-version">{report.version}</span></div><div className="report-card-meta"><span><CircleDot size={13} aria-hidden="true" /><code>{report.repository.commit.slice(0, 7)}</code></span><CopyButton label="Copy commit" value={report.repository.commit} /><span><Clock3 size={13} aria-hidden="true" />{formatReportDate(report.generatedAt)}</span><span><ShieldAlert size={13} aria-hidden="true" />{report.summary.findings} findings</span></div><div className="report-card-actions"><Link className="button button-secondary button-sm button-as-link" to="/findings">Review findings <ArrowUpRight size={14} aria-hidden="true" /></Link><Link className="button button-ghost button-sm button-as-link" to="/verification">View checks <ChevronRight size={14} aria-hidden="true" /></Link></div></div></Panel><EmptyState icon={<FileCheck2 size={20} />} title="No historical reports" description="Connect a report provider to compare branches and retain previous analysis artifacts." /></div>;
+  const stats = reportStats(report);
+  return <div className="page-stack reports-page">
+    <PageHeader eyebrow="Report artifact" title="Reports" description="The loaded report is the source of truth for this workspace. Historical storage comes from the host integration." actions={<Button variant="primary" onClick={() => downloadJson(report, `${report.repository.name}-loom-report.json`)}><Download size={15} /> Download JSON</Button>} />
+    <section className="artifact-header"><div className="artifact-icon"><FileCheck2 size={22} /></div><div><span className="section-kicker">Current artifact</span><h2>{report.reportId}</h2><p>Validated as <code>{report.version}</code> · generated {formatReportDate(report.generatedAt)}</p></div><span className="artifact-source"><span />{report.reportId.startsWith("demo-") ? "Synthetic fixture" : "Imported report"}</span></section>
+    <div className="artifact-grid"><ArtifactFact label="Repository" value={report.repository.name} /><ArtifactFact label="Branch" value={report.repository.branch} code /><ArtifactFact label="Commit" value={report.repository.commit.slice(0, 12)} code /><ArtifactFact label="Base" value={report.repository.baseCommit.slice(0, 12)} code /></div>
+    <section className="section-block artifact-inventory"><SectionHeading eyebrow="Inventory" title="What this artifact contains" /><div className="inventory-table"><InventoryRow label="Changed files" value={stats.filesChanged} detail="Compared against base commit" /><InventoryRow label="Contract changes" value={stats.contractChanges} detail="Declarations with evidence" /><InventoryRow label="Findings" value={stats.findings} detail={`${stats.highRisk} high-risk findings`} /><InventoryRow label="Graph surface" value={report.nodes.length} detail={`${report.edges.length} directional relationships`} /><InventoryRow label="Verification" value={stats.checksTotal} detail={verificationLabel(stats.verification)} /></div></section>
+    <section className="report-links"><Link className="report-link" to="/findings"><ShieldAlert size={18} /><span><strong>Review findings</strong><small>Open the evidence queue and inspector</small></span><ArrowUpRight size={15} /></Link><Link className="report-link" to="/graph"><GitBranch size={18} /><span><strong>Trace impact graph</strong><small>Inspect changed and affected nodes</small></span><ArrowUpRight size={15} /></Link><Link className="report-link" to="/verification"><FileCheck2 size={18} /><span><strong>Inspect verification</strong><small>Read attached commands and output</small></span><ArrowUpRight size={15} /></Link></section>
+    <div className="history-empty"><Clock3 size={18} /><div><strong>No historical reports are loaded</strong><p>Connect a host report provider to compare artifacts. This screen does not fabricate history.</p></div></div>
+  </div>;
+}
+
+function ArtifactFact({ label, value, code = false }: { label: string; value: string; code?: boolean }) {
+  return <div className="artifact-fact"><span>{label}</span><strong className={cn(code && "mono-value")}>{value}</strong></div>;
+}
+
+function InventoryRow({ label, value, detail }: { label: string; value: number; detail: string }) {
+  return <div className="inventory-row"><strong>{label}</strong><span>{detail}</span><b>{value}</b></div>;
 }
 
 export function SettingsPage({ report }: { report: LoomReport }) {
-  return <div className="page-stack"><PageHeader eyebrow="Workspace" title="Settings" description="Configuration that the dashboard can accurately describe." /><Panel><div className="settings-section"><div><h2>Report source</h2><p>The UI loads a validated report from <code>VITE_LOOM_REPORT_URL</code> when configured, otherwise it uses the labeled demo fixture.</p></div><span className="source-badge"><span className="source-dot" aria-hidden="true" />{report.reportId.startsWith("demo-") ? "Demo fixture" : "Imported report"}</span></div><div className="settings-row"><div><strong>Adapter version</strong><p>Validates <code>{report.version}</code> with Zod before rendering.</p></div><span className="settings-value">Ready for JSON</span></div><div className="settings-row"><div><strong>Verification execution</strong><p>Checks are executed by the safe Loom CLI policy, not from the browser.</p></div><span className="settings-value settings-muted">CLI only</span></div></Panel><Panel><div className="settings-section"><div><h2>Presentation</h2><p>Evidence-first detail, graph-focused investigation, and explicit uncertainty.</p></div><Sparkles size={18} className="panel-icon" aria-hidden="true" /></div><label className="toggle-row"><span><strong>Reduced motion</strong><small>Motion is already reduced when the system preference requests it.</small></span><input type="checkbox" disabled /><span className="toggle" /></label><label className="toggle-row"><span><strong>Show confidence scores</strong><small>Confidence is always shown separately from severity and verification.</small></span><input type="checkbox" checked readOnly /><span className="toggle toggle-on" /></label></Panel><Panel><div className="settings-section"><div><h2>Data boundary</h2><p>There is no persistence, authentication, historical report store, or browser-side command runner in this release.</p></div><Info size={18} className="panel-icon" aria-hidden="true" /></div></Panel></div>;
+  return <div className="page-stack settings-page"><PageHeader eyebrow="Workspace configuration" title="Settings" description="Configuration the dashboard can accurately describe." /><section className="settings-list"><SettingRow label="Report source" detail="The UI loads VITE_LOOM_REPORT_URL when configured, otherwise it uses the labeled fixture." value={report.reportId.startsWith("demo-") ? "Synthetic fixture" : "Imported report"} /><SettingRow label="Verification execution" detail="Checks are approved and executed by the Loom CLI, never by this browser session." value="CLI only" /><SettingRow label="Schema validation" detail="The loaded JSON is validated before it is rendered." value={report.version} code /><SettingRow label="Persistence" detail="Historical reports, authentication, and provider storage are supplied by the host integration." value="Not configured" /></section><InlineNotice>{"Settings are read-only in this release. The dashboard shows report facts; it does not silently change repository or provider state."}</InlineNotice></div>;
+}
+
+function SettingRow({ label, detail, value, code = false }: { label: string; detail: string; value: string; code?: boolean }) {
+  return <div className="setting-row"><div><strong>{label}</strong><p>{detail}</p></div><span className={cn("setting-value", code && "mono-value")}>{value}</span></div>;
 }

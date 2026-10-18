@@ -1,233 +1,129 @@
-# Design System Master File
+# Loom design system
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
-
----
+> Source of truth for the Loom review cockpit. Page-specific decisions live in
+> `pages/` and override this file only when they describe a real interaction.
 
 **Project:** Loom
-**Generated:** 2026-10-18 06:53:39
-**Category:** Developer Tool / IDE
-**Design Dials:** Variance 4/10 (Balanced / Modern) | Motion 2/10 (Subtle) | Density 8/10 (Dense / Dashboard)
+**Product:** Developer change-impact investigation tool
+**Direction:** Review cockpit / evidence workbench
+**Density:** Compact enough for code review, never smaller than readable
+**Motion:** Quiet, responsive, cause-and-effect only
 
----
+## Product point of view
 
-## Global Rules
+Loom is not an analytics dashboard. It is a review surface for answering:
 
-### Color Palette
+1. What changed?
+2. What is most likely to break?
+3. What evidence supports that claim?
+4. Which checks confirm or limit it?
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#1E293B` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#334155` | `--color-secondary` |
-| On Secondary | `#FFFFFF` | `--color-on-secondary` |
-| Accent/CTA | `#22C55E` | `--color-accent` |
-| On Accent/CTA | `#0F172A` | `--color-on-accent` |
-| Background | `#0F172A` | `--color-background` |
-| Foreground | `#F8FAFC` | `--color-foreground` |
-| Card | `#1B2336` | `--color-card` |
-| Card Foreground | `#F8FAFC` | `--color-card-foreground` |
-| Muted | `#272F42` | `--color-muted` |
-| Muted Foreground | `#94A3B8` | `--color-muted-foreground` |
-| Border | `#475569` | `--color-border` |
-| Destructive | `#EF4444` | `--color-destructive` |
-| On Destructive | `#000000` | `--color-on-destructive` |
-| Ring | `#FFFFFF` | `--color-ring` |
+The visual hierarchy follows that order. Findings and evidence outrank aggregate
+metrics. The graph is a workspace, not a decorative chart.
 
-**Color Notes:** Code dark + run green
+## Visual language
+
+### Palette
+
+| Role | Value | Use |
+|---|---|---|
+| Canvas | `#0B0E12` | Application background |
+| Surface | `#11161D` | Work areas and artifact sections |
+| Raised surface | `#161C24` | Selected rows, controls, inspector blocks |
+| Strong surface | `#1B232D` | Focused review hero and graph nodes |
+| Text | `#EDF2F7` | Primary reading content |
+| Secondary text | `#B8C2CE` | Supporting copy and evidence values |
+| Muted text | `#8794A4` | Labels, metadata, helper copy |
+| Interaction blue | `#87B4FF` | Selection, links, primary action, graph path |
+| Breaking red | `#FF7F83` | Critical/high risk and failed checks |
+| Uncertainty amber | `#F2BA62` | Incomplete evidence, skipped, inconclusive |
+| Verified green | `#76D7A1` | Explicitly passed checks only |
+
+Use semantic tokens rather than raw values in components. Never use green for a
+generic success mood, and never use color without a text label or icon.
 
 ### Typography
 
-- **Heading Font:** JetBrains Mono
-- **Body Font:** IBM Plex Sans
-- **Mood:** code, developer, technical, precise, functional, hacker
-- **Google Fonts:** [JetBrains Mono + IBM Plex Sans](https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap)
+- IBM Plex Sans: page titles, body copy, finding titles, controls.
+- JetBrains Mono: file paths, symbols, commits, commands, graph relationships,
+  captured output, tabular counts.
+- Body copy starts at 14px desktop and 14px mobile. Supporting text does not
+  drop below 11px. Code stays at 10–12px with generous line height.
+- Use sentence case. Small mono labels are for navigation and evidence context,
+  not for every heading.
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+### Spacing and shape
+
+- Use a 4/8px rhythm: 4, 8, 12, 16, 20, 24, 32.
+- Main content uses 36px desktop gutters and 13–18px narrow gutters.
+- Use 5–8px radii for work surfaces and controls. Avoid pill-shaped decoration.
+- Prefer dividers, grouped rows, and split panes over a grid of identical cards.
+- Shadows are reserved for the review hero, command palette, and elevated shell
+  layers. Borders are quiet but always visible against the canvas.
+
+## Layout system
+
+### Shell
+
+- Desktop shell: 208px navigation rail, one 52px review context bar, scrollable
+  content canvas.
+- The rail contains product identity, repository context, review navigation, and
+  source/check state. Do not duplicate the same context in multiple chrome bars.
+- Mobile collapses the rail into a drawer and keeps the context bar compact.
+
+### Review cockpit
+
+Overview is a narrative, not a metric wall:
+
+```text
+review context
+priority finding + verification gate
+change facts
+review queue       change surface
+impact preview
+attached verification
 ```
 
-### Spacing Variables
+### Findings workspace
 
-*Density: 8/10 — Dense / Dashboard*
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `2px` / `0.125rem` | Tight gaps |
-| `--space-sm` | `4px` / `0.25rem` | Icon gaps, inline spacing |
-| `--space-md` | `8px` / `0.5rem` | Standard padding |
-| `--space-lg` | `12px` / `0.75rem` | Section padding |
-| `--space-xl` | `16px` / `1rem` | Large gaps |
-| `--space-2xl` | `24px` / `1.5rem` | Section margins |
-| `--space-3xl` | `32px` / `2rem` | Hero padding |
-
-### Shadow Depths
-
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
-
----
-
-## Component Specs
-
-### Buttons
-
-```css
-/* Primary Button */
-.btn-primary {
-  background: #22C55E;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #1E293B;
-  border: 2px solid #1E293B;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+```text
+finding queue + search/filter/sort  |  persistent evidence inspector
 ```
 
-### Cards
+The inspector preserves the selected finding while the reviewer scans the queue.
+Deep links use `/findings/:findingId` and retain the same master-detail layout.
 
-```css
-.card {
-  background: #0F172A;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+### Graph workspace
 
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
+```text
+toolbar + graph canvas (primary)   |  selected node inspector
+accessible relationship list
 ```
 
-### Inputs
+The graph has the largest usable area on its dedicated route. Unrelated context
+is dimmed, never removed without explanation.
 
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
+## Interaction rules
 
-.input:focus {
-  border-color: #1E293B;
-  outline: none;
-  box-shadow: 0 0 0 3px #1E293B20;
-}
-```
+- `Ctrl/Cmd + K` opens the command palette; arrows and Enter work without a
+  pointer.
+- Selected findings, nodes, and graph paths have a visible blue state plus text
+  context.
+- Click targets are at least 34px desktop and 44px on narrow screens.
+- Search and filters preserve the selected finding when possible.
+- Evidence cards keep `code`, `file`, `line`, `column`, `relation`, and `path`
+  as separate concepts. Do not concatenate them into one display string.
+- The browser only reads validated reports. It never runs repository commands.
+- Empty, error, skipped, and inconclusive states explain what happened and what
+  the reviewer can do next.
+- Reduced motion removes non-essential transitions and graph animation.
 
-### Modals
+## Anti-patterns
 
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
-
-**Style:** Dark Mode (OLED)
-
-**Keywords:** Dark theme, low light, high contrast, deep black, midnight blue, eye-friendly, OLED, night mode, power efficient
-
-**Best For:** Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light
-
-**Key Effects:** Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability, visible focus
-
-### Page Pattern
-
-**Pattern Name:** FAQ/Documentation Landing
-
-- **Conversion Strategy:** Reduce support tickets. Track search analytics. Show related articles. Contact escalation path.
-- **CTA Placement:** Search bar prominent + Contact CTA for unresolved questions
-- **Section Order:** Hero with search bar > Popular categories > FAQ accordion > Contact/support CTA
-
----
-
-## Motion
-
-**Page Transition** (Subtle) — Trigger: route change | Duration: 200-300ms | Easing: `power1.inOut`
-
-```js
-gsap.to(main, { opacity: 0, duration: 0.2, onComplete: () => { navigate(); gsap.fromTo(main, { opacity: 0 }, { opacity: 1, duration: 0.2 }); } });
-```
-
-**Framework notes:** Pair with the router's transition hooks (Next.js App Router transitions, React Router's useNavigate, Vue Router's beforeEach/afterEach); Use matchMedia('(prefers-reduced-motion: reduce)') to skip non-essential motion and render the final state immediately
-
-- ✅ Preload the destination route's critical assets before the exit tween finishes
-- ❌ Don't block navigation on animation; cap exit duration at ~250ms so the app never feels unresponsive
-- ⚡ Exit animation should always resolve faster than entrance (asymmetric timing) so back/forward feels snappy
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Light mode default
-- ❌ Slow performance
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- Generic metric-card grids as the primary page composition.
+- Decorative gradients, glassmorphism, neon, fake trend charts, or unlabelled
+  demo content.
+- All-caps eyebrows above every heading.
+- Body text below 12px or low-contrast gray-on-gray evidence.
+- Green indicators for partial, skipped, or not-run checks.
+- Hiding the graph in a tiny overview card when the reviewer is investigating it.

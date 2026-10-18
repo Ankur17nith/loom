@@ -15,10 +15,11 @@ describe("dashboard components", () => {
   it("filters findings in the real findings view", () => {
     resetStore();
     render(<MemoryRouter initialEntries={["/findings"]}><FindingsPage report={demoReport} /></MemoryRouter>);
-    expect(screen.getByText("Payment status contract changed")).toBeInTheDocument();
+    const queue = screen.getByRole("region", { name: "Finding queue" });
+    expect(within(queue).getByText("Payment status contract changed")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Severity"), { target: { value: "critical" } });
-    expect(screen.getByText("Retry can duplicate an order")).toBeInTheDocument();
-    expect(screen.queryByText("Payment status contract changed")).not.toBeInTheDocument();
+    expect(within(queue).getByText("Retry can duplicate an order")).toBeInTheDocument();
+    expect(within(queue).queryByText("Payment status contract changed")).not.toBeInTheDocument();
   });
 
   it("shows the empty state when filters have no match", () => {
@@ -35,12 +36,18 @@ describe("dashboard components", () => {
     expect(screen.getByRole("link", { name: /Back to findings/ })).toHaveAttribute("href", "/findings");
   });
 
+  it("keeps evidence paths visible in finding details", () => {
+    render(<MemoryRouter initialEntries={["/findings/finding-payment-status"]}><Routes><Route path="/findings/:findingId" element={<FindingDetailPage report={demoReport} />} /></Routes></MemoryRouter>);
+    expect(screen.getAllByLabelText("Evidence path: src/pages/CheckoutPage.tsx to src/contracts/payment.ts")).toHaveLength(2);
+    expect(screen.queryByText("Limits noted")).not.toBeInTheDocument();
+  });
+
   it("opens the command palette and navigates from a command", () => {
     resetStore();
     render(<MemoryRouter initialEntries={["/"]}><Routes><Route element={<AppLayout report={demoReport} />}><Route index element={<div>Overview route</div>} /><Route path="/graph" element={<div>Graph route</div>} /></Route></Routes></MemoryRouter>);
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(screen.getByRole("dialog", { name: "Command menu" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Explore impact graph/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Trace impact graph/ }));
     expect(screen.getByText("Graph route")).toBeInTheDocument();
   });
 

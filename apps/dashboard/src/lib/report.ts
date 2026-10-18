@@ -29,6 +29,9 @@ export const ReportSchema = z.object({
     contract: z.string(),
     field: z.string(),
     previousField: z.string().optional(),
+    type: z.string().optional(),
+    optional: z.boolean().optional(),
+    evidence: z.object({ line: z.number().int(), column: z.number().int() }).optional(),
   })).default([]),
   nodes: z.array(z.object({
     id: z.string().min(1),
@@ -59,6 +62,12 @@ export const ReportSchema = z.object({
       label: z.string().min(1),
       value: z.string().min(1),
       source: z.string().min(1),
+      file: z.string().min(1).optional(),
+      line: z.number().int().positive().optional(),
+      column: z.number().int().positive().optional(),
+      code: z.string().optional(),
+      relation: z.string().optional(),
+      path: z.array(z.string().min(1)).optional(),
     })).min(1),
     affectedNodeIds: z.array(z.string().min(1)),
     recommendedAction: z.string().min(1),
@@ -69,10 +78,20 @@ export const ReportSchema = z.object({
     id: z.string().min(1),
     name: z.string().min(1),
     command: z.string().min(1),
-    status: z.enum(["passed", "failed", "skipped", "running"]),
+    status: z.enum(["passed", "failed", "skipped", "running", "inconclusive"]),
     durationMs: z.number().int().nonnegative().optional(),
     output: z.string().optional(),
+    reason: z.string().optional(),
   })),
+  verification: z.array(z.object({
+    id: z.string().min(1),
+    command: z.array(z.string().min(1)).min(1),
+    status: z.enum(["passed", "failed", "inconclusive"]),
+    exitCode: z.number().int().optional(),
+    durationMs: z.number().int().nonnegative(),
+    output: z.string(),
+    reason: z.string().optional(),
+  })).optional(),
 });
 
 export type LoomReport = z.infer<typeof ReportSchema>;
@@ -81,6 +100,8 @@ export type GraphNode = LoomReport["nodes"][number];
 export type GraphEdge = LoomReport["edges"][number];
 export type FindingSeverity = Finding["severity"];
 export type FindingStatus = Finding["status"];
+export type VerificationSummary = "passing" | "partial" | "failed" | "not-run";
+export type GraphScope = { nodeIds: Set<string>; edgeIds: Set<string> };
 
 export type ReportSource = "demo-fixture" | "report-json";
 
@@ -118,6 +139,8 @@ const EngineReportSchema = z.object({
     contract: z.string(),
     field: z.string(),
     previousField: z.string().optional(),
+    type: z.string().optional(),
+    optional: z.boolean().optional(),
     evidence: z.object({ line: z.number().int(), column: z.number().int() }),
   })),
   findings: z.array(z.object({
@@ -141,6 +164,15 @@ const EngineReportSchema = z.object({
       path: z.array(z.string()),
     })),
   })),
+  verification: z.array(z.object({
+    id: z.string(),
+    command: z.array(z.string().min(1)).min(1),
+    status: z.enum(["passed", "failed", "inconclusive"]),
+    exitCode: z.number().int().optional(),
+    durationMs: z.number().int().nonnegative(),
+    output: z.string(),
+    reason: z.string().optional(),
+  })).optional(),
   graph: z.object({
     nodes: z.array(z.object({ id: z.string(), kind: z.string(), label: z.string(), path: z.string().optional() })),
     edges: z.array(z.object({ id: z.string(), from: z.string(), to: z.string(), relation: z.string(), label: z.string().optional(), evidence: z.string().optional() })),
@@ -196,32 +228,71 @@ function adaptEngineReport(input: EngineReport): LoomReport {
     return {
       id: finding.id,
       title: finding.message,
-      summary: finding.uncertainty.length ? `${finding.message} ${finding.uncertainty.join(" ")}` : finding.message,
+      summary: finding.message,
       severity: finding.severity === "high" ? "high" as const : finding.severity === "medium" ? "medium" as const : "low" as const,
       status: "open" as const,
       confidence: finding.confidence === "high" ? 0.95 : finding.confidence === "medium" ? 0.65 : 0.35,
       category: finding.kind,
       location: { file: firstEvidence?.file ?? finding.contractPath, line: firstEvidence?.line ?? 1 },
-      evidence: finding.evidence.map((evidence) => ({ label: evidence.relation, value: evidence.code || finding.message, source: `${evidence.file}:${evidence.line}:${evidence.column}` })),
+      evidence: finding.evidence.map((evidence) => ({
+        label: evidence.relation,
+        value: evidence.code || finding.message,
+        source: `${evidence.file}:${evidence.line}:${evidence.column}`,
+        file: evidence.file,
+        line: evidence.line,
+        column: evidence.column,
+        code: evidence.code,
+        relation: evidence.relation,
+        path: evidence.path,
+      })),
       affectedNodeIds: affectedNodeIds.length ? affectedNodeIds : [consumerId].filter((id) => nodeIds.has(id)),
       recommendedAction: finding.kind === "renamed-field" ? `Update ${finding.consumer} to read ${finding.field}, or preserve a compatibility alias.` : `Review ${finding.consumer} and add a focused regression check before merging.`,
       introducedIn: input.repository.commit,
       uncertainty: finding.uncertainty,
     };
   });
-  const checks: LoomReport["checks"] = [];
+  const checks: LoomReport["checks"] = (input.verification ?? []).map((result) => ({
+    id: result.id,
+    name: result.command.join(" "),
+    command: result.command.join(" "),
+    status: result.status,
+    durationMs: result.durationMs,
+    output: result.output,
+    ...(result.reason ? { reason: result.reason } : {}),
+  }));
   return ReportSchema.parse({
     version: "loom.report/v1",
     reportId: input.reportId,
     generatedAt: input.generatedAt,
     repository: input.repository,
-    summary: { filesChanged: input.summary.changedFiles, findings: input.summary.findings, highRisk: input.summary.high, verification: "not-run" },
+    summary: { filesChanged: input.summary.changedFiles, findings: input.summary.findings, highRisk: input.summary.high, verification: verificationSummary(checks) },
     contractChanges: input.contractChanges,
     nodes,
     edges,
     findings,
     checks,
+    verification: input.verification,
   });
+}
+
+export function verificationSummary(checks: LoomReport["checks"]): VerificationSummary {
+  if (checks.length === 0) return "not-run";
+  if (checks.some((check) => check.status === "failed")) return "failed";
+  if (checks.some((check) => check.status === "inconclusive" || check.status === "running" || check.status === "skipped")) return "partial";
+  return "passing";
+}
+
+export function reportStats(report: LoomReport) {
+  return {
+    filesChanged: report.summary.filesChanged,
+    findings: report.findings.length,
+    highRisk: report.findings.filter((finding) => finding.severity === "critical" || finding.severity === "high").length,
+    contractChanges: report.contractChanges.length,
+    affectedNodes: new Set(report.findings.flatMap((finding) => finding.affectedNodeIds)).size,
+    checksPassed: report.checks.filter((check) => check.status === "passed").length,
+    checksTotal: report.checks.length,
+    verification: verificationSummary(report.checks),
+  };
 }
 
 export function formatReportDate(value: string): string {
@@ -232,13 +303,19 @@ export function formatConfidence(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+export function findingSummary(finding: Finding): string {
+  return finding.uncertainty.length > 0
+    ? `${finding.summary} Limits: ${finding.uncertainty.join(" ")}`
+    : finding.summary;
+}
+
 export function filterFindings(
   findings: LoomReport["findings"],
   filters: { query?: string; severity?: FindingSeverity | "all"; status?: FindingStatus | "all" },
 ): LoomReport["findings"] {
   const query = filters.query?.trim().toLowerCase() ?? "";
   return findings.filter((finding) => {
-    const matchesQuery = !query || [finding.title, finding.summary, finding.location.file, finding.category]
+    const matchesQuery = !query || [finding.title, findingSummary(finding), finding.location.file, finding.category, ...finding.uncertainty]
       .some((value) => value.toLowerCase().includes(query));
     const matchesSeverity = !filters.severity || filters.severity === "all" || finding.severity === filters.severity;
     const matchesStatus = !filters.status || filters.status === "all" || finding.status === filters.status;
@@ -246,7 +323,24 @@ export function filterFindings(
   });
 }
 
-export function getGraphHighlight(report: LoomReport, selectedNodeId?: string) {
+export function getFindingGraphScope(report: LoomReport, finding: Finding): GraphScope {
+  const nodeIds = new Set(finding.affectedNodeIds);
+  const pathFiles = finding.evidence.flatMap((evidence) => evidence.path ?? []);
+  for (const node of report.nodes) {
+    if (pathFiles.includes(node.path) || pathFiles.includes(node.id) || pathFiles.includes(node.id.replace(/^module:/, ""))) nodeIds.add(node.id);
+  }
+  const edgeIds = new Set(report.edges
+    .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
+    .map((edge) => edge.id));
+  return { nodeIds, edgeIds };
+}
+
+export function getGraphHighlight(report: LoomReport, selectedNodeId?: string, scope?: GraphScope) {
+  if (scope) {
+    const nodeIds = new Set(scope.nodeIds);
+    if (selectedNodeId) nodeIds.add(selectedNodeId);
+    return { nodeIds, edgeIds: new Set(scope.edgeIds) };
+  }
   if (!selectedNodeId) return { nodeIds: new Set<string>(), edgeIds: new Set<string>() };
   const nodeIds = new Set([selectedNodeId]);
   const edgeIds = new Set<string>();
