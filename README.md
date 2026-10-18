@@ -11,6 +11,8 @@ contracts.
 The optional dashboard is a presentation layer over real Loom reports; it does
 not invent findings.
 
+![Loom Impact Graph](docs/assets/loom-impact-graph.png)
+
 ## Dashboard
 
 The dashboard combines a compact dark developer-tool shell, evidence-first
