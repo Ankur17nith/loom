@@ -87,16 +87,33 @@ function findingFor(change: ContractChange, usage: UsageEvidence, consumer: stri
   return { id: stableId("finding", idValue), kind, severity, contractPath: change.contractPath, contract: change.contract, field: change.field, ...(change.previousField ? { previousField: change.previousField } : {}), consumer, message, confidence: uncertain ? "medium" : "high", uncertainty, evidence: [evidence] };
 }
 
+function baselineUsagesForChange(change: ContractChange, baseline: GraphSnapshot): { usage: UsageEvidence; uncertain: boolean }[] {
+  const oldField = change.previousField ?? change.field;
+  const resolved = baseline.usages
+    .filter((usage) => usage.contractPath === change.contractPath && usage.contract === change.contract && usage.field === oldField)
+    .map((usage) => ({ usage, uncertain: false }));
+  const resolvedKeys = new Set(resolved.map(({ usage }) => `${usage.module}|${usage.line}|${usage.column}`));
+  const reachability = reverseImportReachability(baseline, change.contractPath);
+  for (const module of baseline.modules) {
+    if (!reachability.has(module.path) || module.path === change.contractPath) continue;
+    for (const access of module.propertyAccesses.filter((candidate) => candidate.property === oldField)) {
+      const key = `${module.path}|${access.line}|${access.column}`;
+      if (resolvedKeys.has(key)) continue;
+      resolved.push({ usage: { module: module.path, contractPath: change.contractPath, contract: change.contract, field: oldField, relation: "transitive-property", text: access.text, resolved: false, line: access.line, column: access.column }, uncertain: true });
+    }
+  }
+  return resolved;
+}
+
 function detectFindings(changes: ContractChange[], baseline: GraphSnapshot, current: GraphSnapshot): Finding[] {
   const findings: Finding[] = [];
   for (const change of changes.filter((candidate) => candidate.kind !== "added-optional-field")) {
-    const oldField = change.previousField ?? change.field;
-    const oldUsages = baseline.usages.filter((usage) => usage.contractPath === change.contractPath && usage.contract === change.contract && usage.field === oldField);
-    for (const usage of oldUsages) {
-      const consumer = usage.module;
+    const oldUsages = baselineUsagesForChange(change, baseline);
+    for (const baselineUsage of oldUsages) {
+      const consumer = baselineUsage.usage.module;
       const currentUsage = findCurrentUsage(current, consumer, change);
       if (!currentUsage) continue;
-      findings.push(findingFor(change, currentUsage.usage, consumer, current, currentUsage.uncertain));
+      findings.push(findingFor(change, currentUsage.usage, consumer, current, baselineUsage.uncertain || currentUsage.uncertain));
     }
     if (change.kind === "added-required-field") {
       const reachability = reverseImportReachability(current, change.contractPath);

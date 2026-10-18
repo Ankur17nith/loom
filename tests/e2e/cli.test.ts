@@ -6,15 +6,6 @@ const roots: string[] = [];
 const base = `export interface User {\n  id: string;\n  name: string;\n}\n`;
 const consumer = `import type { User } from "./api";\nexport const read = (user: User) => user.name;\n`;
 
-function invoke(root: string, args: string[]): { code: number; stdout: string; stderr: string } {
-  let stdout = "";
-  let stderr = "";
-  return {
-    code: 0,
-    stdout,
-    stderr,
-  };
-}
 
 afterEach(() => {
   while (roots.length) removeRepo(roots.pop() as string);

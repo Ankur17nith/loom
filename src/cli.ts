@@ -72,6 +72,7 @@ function writeResult(root: string, requested: string | undefined, text: string):
   if (path.isAbsolute(requested)) throw new CliFailure(2, "Output path must be repository-relative");
   const destination = path.resolve(root, requested);
   if (!pathIsInside(root, destination)) throw new CliFailure(2, "Output path must stay inside the repository");
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, text, "utf8");
 }
 

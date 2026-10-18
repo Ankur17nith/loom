@@ -71,6 +71,18 @@ describe("repository contract analysis", () => {
     expect(result.findings[0]?.evidence[0]?.path).toEqual(["src/consumer.ts", "src/public.ts", "src/api.ts"]);
   });
 
+  it("marks an unresolved transitive property access as uncertain", () => {
+    const root = repo({
+      "src/api.ts": apiWithName,
+      "src/public.ts": `export type { User } from "./api";\n`,
+      "src/consumer.ts": `import "./public";\nexport const read = (value: unknown) => (value as { name: string }).name;\n`,
+    });
+    updateRepo(root, { "src/api.ts": apiWithoutName });
+    const result = scan(root);
+    expect(result.findings[0]).toMatchObject({ confidence: "medium", uncertainty: ["The consumer is connected transitively and its property access could not be type-resolved."] });
+    expect(result.findings[0]?.evidence[0]?.path).toEqual(["src/consumer.ts", "src/public.ts", "src/api.ts"]);
+  });
+
   it("fails clearly when the requested base commit is missing", () => {
     const root = repo({ "src/api.ts": apiWithName });
     expect(() => analyzeRepository({ root, base: "missing-base" })).toThrow(/Base missing-base does not resolve/);
