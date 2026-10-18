@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Activity, AlertTriangle, BarChart3, Clock3, Command, FileCheck2, FileText, FileUp, GitBranch, Menu, Search, Settings, ShieldCheck, Sparkles, X } from "lucide-react";
-import { formatReportDate, reportStats, type LoomReport } from "../lib/report.js";
+import { formatReportDate, reportStats, type LoomReport, type ProvenanceInfo } from "../lib/report.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 import { Button, IconButton, Kbd, SourceBadge, cn } from "./ui.js";
 import { LoomSymbol } from "./brand/loom-brand.js";
@@ -23,6 +23,8 @@ export function AppLayout({
   sourceLabel = "Demo fixture · labeled",
   isDemo = false,
   isStale = false,
+  workspaceName = "loom",
+  provenance,
   onUnloadReport,
   onLoadFile,
 }: {
@@ -30,6 +32,8 @@ export function AppLayout({
   sourceLabel?: string;
   isDemo?: boolean;
   isStale?: boolean;
+  workspaceName?: string;
+  provenance?: ProvenanceInfo;
   onUnloadReport?: () => void;
   onLoadFile?: (file: File) => void;
 }) {
@@ -41,6 +45,7 @@ export function AppLayout({
   const sidebarOpen = useDashboardStore((state) => state.sidebarOpen);
   const setSidebarOpen = useDashboardStore((state) => state.setSidebarOpen);
   const activeLabel = location.pathname === "/" ? "Overview" : location.pathname === "/brand" ? "Brand identity" : navItems.find((item) => location.pathname.startsWith(item.to) && item.to !== "/")?.label ?? "Settings";
+  const isForeignRepo = Boolean(workspaceName && report.repository.name !== workspaceName && !isDemo);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -75,6 +80,14 @@ export function AppLayout({
       </div>
     </aside>
     <div className="content-frame">
+      {isForeignRepo && (
+        <div className="foreign-repo-banner" role="status" aria-label="Foreign repository notice">
+          <div className="demo-banner-content">
+            <AlertTriangle size={15} aria-hidden="true" />
+            <span><strong>External repository report</strong> · Currently inspecting report for repository <code>{report.repository.name}</code> (current workspace: <code>{workspaceName}</code>).</span>
+          </div>
+        </div>
+      )}
       {isDemo && (
         <div className="demo-mode-banner" role="status" aria-label="Demo mode notice">
           <div className="demo-banner-content">
@@ -97,7 +110,14 @@ export function AppLayout({
       <header className="topbar">
         <IconButton className="mobile-menu" label="Open navigation" onClick={() => setSidebarOpen(true)}><Menu size={18} /></IconButton>
         <div className="topbar-title"><span>{report.repository.name}</span><span className="topbar-slash">/</span><strong>{activeLabel}</strong></div>
-        <div className="review-context"><span><span className="context-dot" />{report.repository.branch}</span><span>base <code>{report.repository.baseCommit.slice(0, 7)}</code></span><span>commit <code>{report.repository.commit.slice(0, 7)}</code></span></div>
+        <div className="review-context">
+          <span><span className="context-dot" />{report.repository.branch}</span>
+          <span>base <code>{report.repository.baseCommit.slice(0, 7)}</code></span>
+          <span>commit <code>{report.repository.commit.slice(0, 7)}</code></span>
+          {report.summary.filesChanged > 0 && report.repository.commit === report.repository.baseCommit && (
+            <span className="working-tree-tag">uncommitted working tree</span>
+          )}
+        </div>
         <div className="topbar-actions">
           <SourceBadge label={sourceLabel} />
           {onLoadFile && (

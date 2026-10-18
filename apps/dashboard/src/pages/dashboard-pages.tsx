@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, CheckCircle2, ChevronRig
 import { DeferredGraphView } from "../components/deferred-graph.js";
 import { FindingInspector } from "../components/evidence-inspector.js";
 import { Button, CopyButton, EmptyState, ErrorState, FindingRow, InlineNotice, PageHeader, SeverityBadge, cn } from "../components/ui.js";
-import { filterFindings, formatConfidence, formatReportDate, getFinding, getFindingGraphScope, reportStats, type Finding, type FindingSeverity, type FindingStatus, type LoomReport } from "../lib/report.js";
+import { filterFindings, formatConfidence, formatReportDate, getFinding, getFindingGraphScope, reportStats, type Finding, type FindingSeverity, type FindingStatus, type LoomReport, type ProvenanceInfo } from "../lib/report.js";
 import { useDashboardStore } from "../store/dashboard-store.js";
 
 function downloadJson(value: unknown, filename: string): void {
@@ -495,8 +495,24 @@ function StatusCheck({ status }: { status: string }) {
   return <span className={cn("check-status", `check-status-${status}`)}>{label}</span>;
 }
 
-export function ReportsPage({ report }: { report: LoomReport }) {
+export function ReportsPage({
+  report,
+  provenance,
+  workspaceName = "loom",
+}: {
+  report: LoomReport;
+  provenance?: ProvenanceInfo;
+  workspaceName?: string;
+}) {
   const stats = reportStats(report);
+  const isForeign = Boolean(workspaceName && report.repository.name !== workspaceName && !report.reportId.startsWith("demo-"));
+  const workingTreeState =
+    report.repository.commit === report.repository.baseCommit
+      ? report.summary.filesChanged > 0
+        ? "Uncommitted changes"
+        : "Clean baseline"
+      : "Committed diff";
+
   return <div className="page-stack reports-page">
     <PageHeader eyebrow="Report artifact" title="Reports" description="The loaded report is the source of truth for this workspace. Historical storage comes from the host integration." actions={<Button variant="primary" onClick={() => downloadJson(report, `${report.repository.name}-loom-report.json`)}><Download size={15} aria-hidden="true" /> Download JSON</Button>} />
     <section className="artifact-header">
@@ -509,13 +525,20 @@ export function ReportsPage({ report }: { report: LoomReport }) {
         </div>
         <p>Validated as <code>{report.version}</code> · generated {formatReportDate(report.generatedAt)}</p>
       </div>
-      <span className="artifact-source"><span aria-hidden="true" />{report.reportId.startsWith("demo-") ? "Synthetic fixture" : "Imported report"}</span>
+      <span className={cn("artifact-source", isForeign && "artifact-source-external")}>
+        <span aria-hidden="true" />
+        {isForeign ? `External: ${report.repository.name}` : report.reportId.startsWith("demo-") ? "Synthetic fixture" : "Imported report"}
+      </span>
     </section>
     <div className="artifact-grid">
       <ArtifactFact label="Repository" value={report.repository.name} />
+      <ArtifactFact label="Active workspace" value={workspaceName} />
+      <ArtifactFact label="Source" value={provenance?.loadType === "dev-server" ? "Dev server (/reports/report.json)" : provenance?.loadType === "file-upload" ? `File (${provenance.location})` : provenance?.loadType === "remote-url" ? `URL (${provenance.location})` : (report.reportId.startsWith("demo-") ? "Demo fixture" : "Report artifact")} />
+      <ArtifactFact label="Working tree" value={workingTreeState} />
       <ArtifactFact label="Branch" value={report.repository.branch} code />
       <ArtifactFact label="Commit" value={report.repository.commit.slice(0, 12)} code />
       <ArtifactFact label="Base" value={report.repository.baseCommit.slice(0, 12)} code />
+      <ArtifactFact label="Report version" value={report.version} code />
     </div>
     <section className="section-block artifact-inventory">
       <SectionHeading eyebrow="Inventory" title="What this artifact contains" />

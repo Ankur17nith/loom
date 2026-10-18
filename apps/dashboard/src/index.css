@@ -1521,6 +1521,43 @@ kbd { padding: 2px 5px; color: var(--text-2); background: #18191e; border: 1px s
   font-size: 12px;
 }
 
+.foreign-repo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(239, 68, 68, 0.12);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  padding: 8px 24px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+
+.foreign-repo-banner code {
+  color: #fef2f2;
+  background: rgba(239, 68, 68, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+
+.artifact-source-external {
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.working-tree-tag {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;

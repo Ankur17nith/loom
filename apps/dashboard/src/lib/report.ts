@@ -105,10 +105,18 @@ export type GraphScope = { nodeIds: Set<string>; edgeIds: Set<string> };
 
 export type ReportSource = "demo-fixture" | "report-json";
 
+export type ProvenanceInfo = {
+  loadType: "file-upload" | "dev-server" | "remote-url" | "demo-fixture";
+  location: string;
+  loadedAt: string;
+  activeWorkspaceName?: string;
+};
+
 export type ReportLoadResult = {
   report: LoomReport;
   source: ReportSource;
   label: string;
+  provenance?: ProvenanceInfo;
 };
 
 const EngineReportSchema = z.object({

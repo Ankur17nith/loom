@@ -34,6 +34,7 @@ export function App() {
   const [loadedReport, setLoadedReport] = useState<ReportLoadResult | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [workspaceName, setWorkspaceName] = useState<string>(import.meta.env.VITE_LOOM_WORKSPACE_NAME || "loom");
 
   const loadFromUrl = async (url: string) => {
     const trimmed = url.trim();
@@ -73,10 +74,24 @@ export function App() {
         throw new Error(`Malformed JSON in report: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
       }
       const adapted = reportFromJson(input);
+      const headerWs = response.headers.get("X-Loom-Workspace");
+      const activeWs = headerWs || workspaceName;
+      const loadType = trimmed.includes("/reports/report.json") ? "dev-server" : "remote-url";
       resetDashboardState();
-      setLoadedReport({ ...adapted, label: `URL: ${trimmed}` });
+      setLoadedReport({
+        ...adapted,
+        label: loadType === "dev-server" ? "Dev server (/reports/report.json)" : `URL: ${trimmed}`,
+        provenance: {
+          loadType,
+          location: trimmed,
+          loadedAt: new Date().toISOString(),
+          activeWorkspaceName: activeWs,
+        },
+      });
       try { sessionStorage.removeItem("loom_demo_mode"); } catch {}
     } catch (reason: unknown) {
+      resetDashboardState();
+      setLoadedReport(undefined);
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setLoading(false);
@@ -86,6 +101,8 @@ export function App() {
   const handleFileLoaded = (content: string, filename: string) => {
     setError(undefined);
     if (!content.trim()) {
+      resetDashboardState();
+      setLoadedReport(undefined);
       setError(`Report file "${filename}" is empty. Please run 'loom scan --output ${filename}' to produce a valid report.`);
       return;
     }
@@ -98,9 +115,20 @@ export function App() {
       }
       const adapted = reportFromJson(parsed);
       resetDashboardState();
-      setLoadedReport({ ...adapted, label: `File: ${filename}` });
+      setLoadedReport({
+        ...adapted,
+        label: `File: ${filename}`,
+        provenance: {
+          loadType: "file-upload",
+          location: filename,
+          loadedAt: new Date().toISOString(),
+          activeWorkspaceName: workspaceName,
+        },
+      });
       try { sessionStorage.removeItem("loom_demo_mode"); } catch {}
     } catch (reason: unknown) {
+      resetDashboardState();
+      setLoadedReport(undefined);
       setError(`Invalid report in ${filename}: ${reason instanceof Error ? reason.message : String(reason)}`);
     }
   };
@@ -109,7 +137,15 @@ export function App() {
     setError(undefined);
     resetDashboardState();
     try { sessionStorage.setItem("loom_demo_mode", "true"); } catch {}
-    setLoadedReport(demoLoadedReport);
+    setLoadedReport({
+      ...demoLoadedReport,
+      provenance: {
+        loadType: "demo-fixture",
+        location: "bundled-fixture",
+        loadedAt: new Date().toISOString(),
+        activeWorkspaceName: workspaceName,
+      },
+    });
   };
 
   const handleUnloadReport = () => {
@@ -120,6 +156,15 @@ export function App() {
   };
 
   useEffect(() => {
+    fetch("/api/workspace")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.workspaceName === "string") {
+          setWorkspaceName(data.workspaceName);
+        }
+      })
+      .catch(() => {});
+
     const params = new URLSearchParams(window.location.search);
     const demoParam = params.get("demo");
     const isExplicitDemo = demoParam === "true" || demoParam === "1" || params.has("demo");
@@ -130,7 +175,15 @@ export function App() {
     try { sessionDemo = sessionStorage.getItem("loom_demo_mode") === "true"; } catch {}
 
     if (isExplicitDemo || envDemo || sessionDemo) {
-      setLoadedReport(demoLoadedReport);
+      setLoadedReport({
+        ...demoLoadedReport,
+        provenance: {
+          loadType: "demo-fixture",
+          location: "bundled-fixture",
+          loadedAt: new Date().toISOString(),
+          activeWorkspaceName: workspaceName,
+        },
+      });
       return;
     }
 
@@ -161,7 +214,7 @@ export function App() {
     );
   }
 
-  const { report, label, source } = loadedReport;
+  const { report, label, source, provenance } = loadedReport;
   const isDemo = source === "demo-fixture";
   const stale = isReportStale(report);
 
@@ -175,6 +228,8 @@ export function App() {
               sourceLabel={label}
               isDemo={isDemo}
               isStale={stale}
+              workspaceName={workspaceName}
+              provenance={provenance}
               onUnloadReport={handleUnloadReport}
               onLoadFile={(file) => {
                 const reader = new FileReader();
@@ -193,7 +248,7 @@ export function App() {
           <Route path="findings" element={<FindingsPage report={report} />} />
           <Route path="findings/:findingId" element={<FindingDetailPage report={report} />} />
           <Route path="verification" element={<VerificationPage report={report} />} />
-          <Route path="reports" element={<ReportsPage report={report} />} />
+          <Route path="reports" element={<ReportsPage report={report} provenance={provenance} workspaceName={workspaceName} />} />
           <Route path="settings" element={<SettingsPage report={report} />} />
           <Route path="brand" element={<BrandShowcasePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
