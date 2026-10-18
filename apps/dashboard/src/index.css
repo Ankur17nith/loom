@@ -26,15 +26,24 @@
   --text-3: #828a95;             /* zinc-450 tertiary / metadata */
   --text-4: #5e6673;             /* zinc-500 micro / icons */
 
-  /* Faultline Accents (Restrained, Semantic, Technical) */
+  /* Canonical Loom Brand Tokens (Figma Make source of truth) */
+  --brand-blue: #889cff;         /* Canonical cool blue / electric iris accent */
+  --brand-blue-hover: #a5b4fc;   /* Interactive hover tint */
+  --brand-blue-strong: #7084f5;  /* Saturated active blue */
+  --brand-blue-soft: rgba(136, 156, 255, 0.12); /* Translucent accent pill */
+  --brand-blue-border: rgba(136, 156, 255, 0.35); /* Focus & highlight borders */
+  --brand-blue-shadow: #3e406d;  /* Chiseled 3D facet shade */
+  --brand-white-facet: #606264;  /* Neutral chiseled facet shade */
+
+  /* Technical Accents (Restrained, Semantic, Technical) */
   --fl-ember: #f97316;           /* ember fault line: risk, causal break */
-  --fl-iris: #38bdf8;            /* iris / sky: technical paths, primary focus */
+  --fl-iris: var(--brand-blue);  /* primary brand iris / cool blue */
   --fl-proof: #34d399;           /* proof emerald: verified checks, passing gate */
 
-  --blue: #38bdf8;
-  --blue-strong: #0284c7;
-  --blue-soft: rgba(56, 189, 248, 0.12);
-  --blue-border: rgba(56, 189, 248, 0.35);
+  --blue: var(--brand-blue);
+  --blue-strong: var(--brand-blue-strong);
+  --blue-soft: var(--brand-blue-soft);
+  --blue-border: var(--brand-blue-border);
 
   --red: #f87171;
   --red-soft: rgba(239, 68, 68, 0.12);
@@ -74,7 +83,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Sidebar */
 .sidebar { position: sticky; top: 0; z-index: 30; display: flex; flex-direction: column; height: 100vh; padding: 18px 12px 14px; background: #0c0d10; border-right: 1px solid var(--line-soft); }
 .sidebar-brand { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 8px; }
-.brand-mark { display: grid; place-items: center; width: 26px; height: 26px; color: var(--fl-ember); background: #16171c; border: 1px solid #27272a; border-radius: 6px; box-shadow: 0 0 12px rgba(249, 115, 22, .18); }
+.brand-mark { display: grid; place-items: center; width: 28px; height: 28px; background: transparent; border-radius: 4px; }
 .brand-name { color: var(--text); font-size: 15px; font-weight: 600; letter-spacing: -.025em; }
 .brand-version { margin-left: auto; color: var(--text-3); font-family: var(--mono); font-size: 9.5px; background: #16171c; border: 1px solid #27272a; padding: 1px 5px; border-radius: 4px; }
 .sidebar-repo { display: flex; align-items: center; gap: 10px; margin: 20px 4px 16px; padding: 9px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
