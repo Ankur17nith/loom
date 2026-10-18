@@ -118,17 +118,17 @@ export function ReportConnectScreen({
             </Button>
           </div>
 
-          {/* Option B: Load via URL / Path */}
+          {/* Option B: Load via URL */}
           <div className="connect-url-pane">
-            <h3>Load from URL or local path</h3>
-            <p>If running a report server or preview endpoint, enter its relative or absolute URL:</p>
+            <h3>Load from dev server or remote URL</h3>
+            <p>Fetch from the local Vite dev server endpoint or an HTTP report URL:</p>
             <form onSubmit={handleSubmitUrl} className="connect-url-form">
               <input
                 type="text"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="/reports/report.json or http://localhost:4175/report.json"
-                aria-label="Report URL or path"
+                aria-label="Report URL"
                 disabled={loading}
               />
               <Button variant="primary" size="md" type="submit" disabled={!urlInput.trim() || loading}>
@@ -136,6 +136,9 @@ export function ReportConnectScreen({
                 <ArrowRight size={14} aria-hidden="true" />
               </Button>
             </form>
+            <p className="url-sandbox-note">
+              Browsers cannot read raw filesystem paths directly. Drag and drop into the zone on the left, or access <code>/reports/report.json</code> served by Vite.
+            </p>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, ChevronRight, CircleOff, Clock3, Code2, Download, FileCheck2, FileText, Filter, GitBranch, ListFilter, RefreshCw, Search, ShieldAlert, Terminal, TriangleAlert, X, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, CheckCircle2, ChevronRight, CircleOff, Clock3, Code2, Download, FileCheck2, FileText, Filter, GitBranch, ListFilter, RefreshCw, Search, ShieldAlert, Terminal, TriangleAlert, X, XCircle } from "lucide-react";
 import { DeferredGraphView } from "../components/deferred-graph.js";
 import { FindingInspector } from "../components/evidence-inspector.js";
 import { Button, CopyButton, EmptyState, ErrorState, FindingRow, InlineNotice, PageHeader, SeverityBadge, cn } from "../components/ui.js";
@@ -225,7 +225,8 @@ function verificationLabel(status: ReturnType<typeof reportStats>["verification"
 
 export function GraphPage({ report }: { report: LoomReport }) {
   const [searchParams] = useSearchParams();
-  const finding = getFinding(report, searchParams.get("finding") ?? undefined);
+  const findingIdParam = searchParams.get("finding") ?? undefined;
+  const finding = getFinding(report, findingIdParam);
   const selectedNodeId = useDashboardStore((state) => state.selectedNodeId);
   const selectedNode = report.nodes.find((node) => node.id === selectedNodeId);
   const selectNode = useDashboardStore((state) => state.selectNode);
@@ -239,6 +240,12 @@ export function GraphPage({ report }: { report: LoomReport }) {
       <strong>Finding scope</strong>
       <span>{findingScope?.nodeIds.size ?? affected.length} evidence-linked nodes</span>
       <Link to={`/findings/${finding.id}`}>Open finding <ArrowUpRight size={13} aria-hidden="true" /></Link>
+    </div>}
+    {findingIdParam && !finding && <div className="context-strip context-strip-warning" role="status" aria-label="Finding not found notice">
+      <AlertTriangle size={14} aria-hidden="true" />
+      <strong>Finding "{findingIdParam}" not found in current report</strong>
+      <span>Displaying full dependency graph without finding filter.</span>
+      <Link to="/findings">View all findings <ArrowUpRight size={13} aria-hidden="true" /></Link>
     </div>}
     <div className="graph-workspace">
       <section className="graph-stage">

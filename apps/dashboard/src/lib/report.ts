@@ -188,10 +188,21 @@ export function safeParseReportJson(input: unknown) {
 }
 
 export function reportFromJson(input: unknown): ReportLoadResult {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Report data must be a valid JSON object.");
+  }
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.version === "string" && obj.version !== "loom.report/v1") {
+    throw new Error(`Unsupported report version "${obj.version}". Expected "loom.report/v1".`);
+  }
   const parsed = ReportSchema.safeParse(input);
   if (parsed.success) return { report: parsed.data, source: "report-json", label: "Imported report" };
-  const engine = EngineReportSchema.parse(input);
-  return { report: adaptEngineReport(engine), source: "report-json", label: "Loom engine report" };
+  const engine = EngineReportSchema.safeParse(input);
+  if (engine.success) {
+    return { report: adaptEngineReport(engine.data), source: "report-json", label: "Loom engine report" };
+  }
+  const issues = engine.error.issues.map((i) => `${i.path.join(".") || "root"}: ${i.message}`).slice(0, 3);
+  throw new Error(`Report schema validation failed: ${issues.join("; ")}`);
 }
 
 type EngineReport = z.infer<typeof EngineReportSchema>;

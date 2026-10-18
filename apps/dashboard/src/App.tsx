@@ -7,8 +7,19 @@ import { BrandShowcasePage } from "./pages/brand-page.js";
 import { reportFromJson, type LoomReport, type ReportLoadResult } from "./lib/report.js";
 import { LoadingState } from "./components/ui.js";
 import { ReportConnectScreen } from "./components/report-connect.js";
+import { useDashboardStore } from "./store/dashboard-store.js";
 
 const demoLoadedReport: ReportLoadResult = { ...reportFromJson(demoReport), source: "demo-fixture", label: "Demo fixture · labeled" };
+
+function resetDashboardState() {
+  useDashboardStore.setState({
+    selectedFindingId: undefined,
+    selectedNodeId: undefined,
+    findingQuery: "",
+    severityFilter: "all",
+    statusFilter: "all",
+  });
+}
 
 function isReportStale(report: LoomReport): boolean {
   try {
@@ -25,14 +36,45 @@ export function App() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const loadFromUrl = async (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
     setLoading(true);
     setError(undefined);
+
+    // Detect attempts to pass local filesystem paths directly to browser fetch
+    if (
+      trimmed.startsWith("file://") ||
+      trimmed.startsWith("./") ||
+      trimmed.startsWith("../") ||
+      trimmed.startsWith("~/") ||
+      /^[a-zA-Z]:[\\/]/.test(trimmed) ||
+      (trimmed.startsWith("/") && !trimmed.startsWith("/reports/"))
+    ) {
+      setError(
+        `Local filesystem paths ("${trimmed}") cannot be read directly by browser HTTP requests. Use the drag-and-drop dropzone or "Select from disk" above, or use the dev server endpoint /reports/report.json.`
+      );
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Report request failed with HTTP ${response.status}`);
-      const input = (await response.json()) as unknown;
+      const response = await fetch(trimmed);
+      if (!response.ok) {
+        throw new Error(`Report request failed with HTTP ${response.status} (${response.statusText || "Not Found"}) for ${trimmed}`);
+      }
+      const rawText = await response.text();
+      if (!rawText.trim()) {
+        throw new Error("The report at this URL is empty. Please run 'loom scan --output <path>' to generate valid report content.");
+      }
+      let input: unknown;
+      try {
+        input = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error(`Malformed JSON in report: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+      }
       const adapted = reportFromJson(input);
-      setLoadedReport({ ...adapted, label: `URL: ${url}` });
+      resetDashboardState();
+      setLoadedReport({ ...adapted, label: `URL: ${trimmed}` });
       try { sessionStorage.removeItem("loom_demo_mode"); } catch {}
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -43,24 +85,36 @@ export function App() {
 
   const handleFileLoaded = (content: string, filename: string) => {
     setError(undefined);
+    if (!content.trim()) {
+      setError(`Report file "${filename}" is empty. Please run 'loom scan --output ${filename}' to produce a valid report.`);
+      return;
+    }
     try {
-      const parsed = JSON.parse(content) as unknown;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(content);
+      } catch (parseErr) {
+        throw new Error(`Malformed JSON: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+      }
       const adapted = reportFromJson(parsed);
+      resetDashboardState();
       setLoadedReport({ ...adapted, label: `File: ${filename}` });
       try { sessionStorage.removeItem("loom_demo_mode"); } catch {}
     } catch (reason: unknown) {
-      setError(`Invalid report JSON in ${filename}: ${reason instanceof Error ? reason.message : String(reason)}`);
+      setError(`Invalid report in ${filename}: ${reason instanceof Error ? reason.message : String(reason)}`);
     }
   };
 
   const handleDemoClick = () => {
     setError(undefined);
+    resetDashboardState();
     try { sessionStorage.setItem("loom_demo_mode", "true"); } catch {}
     setLoadedReport(demoLoadedReport);
   };
 
   const handleUnloadReport = () => {
     try { sessionStorage.removeItem("loom_demo_mode"); } catch {}
+    resetDashboardState();
     setLoadedReport(undefined);
     setError(undefined);
   };
