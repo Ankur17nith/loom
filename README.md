@@ -2,7 +2,6 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="brand/logo-horizontal-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="brand/logo-horizontal-light.svg">
   <img alt="Loom Logo" src="brand/logo-horizontal-dark.svg" width="220">
 </picture>
 
